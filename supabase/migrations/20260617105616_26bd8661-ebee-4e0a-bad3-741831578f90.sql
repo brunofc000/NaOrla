@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.revoke_employee_sessions_on_password_clear() FROM PUBLIC, anon, authenticated;
