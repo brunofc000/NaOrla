@@ -380,16 +380,14 @@ function PedidosWaiter() {
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLOR[o.status] ?? "bg-muted"}`}>
                   {STATUS_LABEL[o.status] ?? o.status}
                 </span>
-                {employee && (
-                  <Link
-                    to="/pedido"
-                    search={{ mesa: o.table_number }}
-                    aria-label="Adicionar itens"
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:opacity-90"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                  </Link>
-                )}
+                <Link
+                  to="/pedido"
+                  search={{ mesa: o.table_number }}
+                  aria-label="Adicionar itens"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:opacity-90"
+                >
+                  <PlusCircle className="h-5 w-5" />
+                </Link>
               </div>
             </div>
             <ul className="mt-3 space-y-1 text-sm">
@@ -421,7 +419,7 @@ function PedidosWaiter() {
                     </span>
                   </button>
                   <div className="flex items-center gap-1">
-                    {employee && !i.delivered && (
+                    {!i.delivered && (
                       <>
                         <button
                           type="button"
@@ -454,16 +452,14 @@ function PedidosWaiter() {
             {o.notes && <p className="mt-2 text-xs text-muted-foreground">Obs. geral: {o.notes}</p>}
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">Total {brl(o.total)}</p>
-              {employee && (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => { if (confirm(`Cancelar pedido da mesa ${o.table_number}?`)) cancelOrder.mutate(o.id); }}>
-                    <X className="mr-1 h-4 w-4" /> Cancelar
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => { setClosing(o); setMethod("pix"); }}>
-                    <Receipt className="mr-1 h-4 w-4" /> Fechar mesa
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { if (confirm(`Cancelar pedido da mesa ${o.table_number}?`)) cancelOrder.mutate(o.id); }}>
+                  <X className="mr-1 h-4 w-4" /> Cancelar
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => { setClosing(o); setMethod("pix"); }}>
+                  <Receipt className="mr-1 h-4 w-4" /> Fechar mesa
+                </Button>
+              </div>
             </div>
           </li>
         ))}
