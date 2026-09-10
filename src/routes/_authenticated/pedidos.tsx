@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { brl } from "@/lib/format";
 import { useEmployeeSession } from "@/lib/employee-session";
 
-type OrderItem = { id: string; name: string; quantity: number; price: number; notes?: string | null; delivered?: boolean; created_at?: string };
+type OrderItem = { id: string; name: string; quantity: number; price: number; notes?: string | null; delivered?: boolean; created_at?: string; menu_item_id?: string | null; menu_items?: { image_url: string | null } | null };
 type Order = {
   id: string;
   table_number: string;
@@ -55,7 +55,7 @@ function PedidosOwner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered, created_at)")
+        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered, created_at, menu_item_id, menu_items(image_url))")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -218,10 +218,15 @@ function PedidosOwner() {
                     <ul className="space-y-1 border-t border-border px-3 py-2 text-sm">
                       {o.order_items.map(i => (
                         <li key={i.id} className="flex justify-between gap-2">
-                          <span>
-                            {i.quantity}× {i.name}
-                            {i.notes && <span className="block text-xs text-muted-foreground">obs: {i.notes}</span>}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {i.menu_items?.image_url && (
+                              <img src={i.menu_items.image_url} alt={i.name} className="h-10 w-10 object-cover border border-border rounded" />
+                            )}
+                            <span>
+                              {i.quantity}× {i.name}
+                              {i.notes && <span className="block text-xs text-muted-foreground">obs: {i.notes}</span>}
+                            </span>
+                          </div>
                           <span className="text-muted-foreground">{brl(Number(i.price) * i.quantity)}</span>
                         </li>
                       ))}
@@ -402,6 +407,9 @@ function PedidosWaiter() {
                     }`}>
                       {i.delivered && <Check className="h-3.5 w-3.5" />}
                     </span>
+                    {i.menu_items?.image_url && (
+                      <img src={i.menu_items.image_url} alt={i.name} className="h-10 w-10 object-cover border border-border rounded shrink-0" />
+                    )}
                     <span className={i.delivered ? "line-through text-muted-foreground" : ""}>
                       {i.quantity}× {i.name}
                       {i.created_at && (
@@ -468,8 +476,13 @@ function PedidosWaiter() {
             <p className="text-sm text-muted-foreground">Confira o total e a forma de pagamento.</p>
             <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-sm">
               {closing.order_items.map(i => (
-                <li key={i.id} className="flex justify-between">
-                  <span>{i.quantity}× {i.name}</span>
+                <li key={i.id} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {i.menu_items?.image_url && (
+                      <img src={i.menu_items.image_url} alt={i.name} className="h-8 w-8 object-cover border border-border rounded" />
+                    )}
+                    <span>{i.quantity}× {i.name}</span>
+                  </div>
                   <span className="text-muted-foreground">{brl(i.price * i.quantity)}</span>
                 </li>
               ))}
