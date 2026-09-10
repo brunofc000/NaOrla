@@ -121,6 +121,16 @@ function ItemDialog({ item }: { item?: Item }) {
   const [imageUrl, setImageUrl] = useState(item?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
 
+  // Buscar produtos do estoque
+  const { data: stockProducts = [] } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("products").select("*").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -169,7 +179,31 @@ function ItemDialog({ item }: { item?: Item }) {
       <DialogContent>
         <DialogHeader><DialogTitle className="font-display">{item ? "Editar item" : "Novo item"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label>Nome</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
+          {!item ? (
+            <div>
+              <Label>Produto do estoque</Label>
+              <Select
+                value={name}
+                onValueChange={(value) => {
+                  setName(value);
+                  const product = stockProducts.find((p: any) => p.name === value);
+                  if (product) {
+                    setPrice(String(product.sell_price ?? "").replace(".", ","));
+                    setCategory(product.category || "Bebidas");
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+                <SelectContent>
+                  {stockProducts.map((p: any) => (
+                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div><Label>Nome</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
+          )}
           <div><Label>Descrição</Label><Input value={description ?? ""} onChange={e => setDescription(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Preço</Label><Input type="text" inputMode="decimal" placeholder="0,00" value={price} onChange={e => setPrice(e.target.value)} /></div>
