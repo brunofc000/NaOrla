@@ -84,8 +84,8 @@ function ProductDialog({ product }: { product?: Product }) {
   const [name, setName] = useState(product?.name ?? "");
   const [quantity, setQuantity] = useState(String(product?.quantity ?? 0));
   const [min_quantity, setMin] = useState(String(product?.min_quantity ?? 5));
-  const [sell_price, setSell] = useState(String(product?.sell_price ?? 0));
-  const [cost_price, setCost] = useState(String(product?.cost_price ?? 0));
+  const [sell_price, setSell] = useState(String(product?.sell_price ?? "").replace(".", ","));
+  const [cost_price, setCost] = useState(String(product?.cost_price ?? "").replace(".", ","));
   const [unit, setUnit] = useState(product?.unit ?? "un");
   const [category, setCategory] = useState(product?.category ?? "geral");
 
@@ -126,8 +126,8 @@ function ProductDialog({ product }: { product?: Product }) {
             <div><Label>Mínimo</Label><Input inputMode="numeric" value={min_quantity} onChange={e => setMin(e.target.value)} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Preço venda</Label><Input inputMode="decimal" value={sell_price} onChange={e => setSell(e.target.value)} /></div>
-            <div><Label>Custo</Label><Input inputMode="decimal" value={cost_price} onChange={e => setCost(e.target.value)} /></div>
+            <div><Label>Preço venda</Label><Input type="text" inputMode="decimal" placeholder="0,00" value={sell_price} onChange={e => setSell(e.target.value)} /></div>
+            <div><Label>Custo</Label><Input type="text" inputMode="decimal" placeholder="0,00" value={cost_price} onChange={e => setCost(e.target.value)} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Unidade</Label><Input value={unit} onChange={e => setUnit(e.target.value)} placeholder="un, kg, L" /></div>

@@ -114,7 +114,7 @@ function ItemDialog({ item }: { item?: Item }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(item?.name ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
-  const [price, setPrice] = useState(String(item?.price ?? 0));
+  const [price, setPrice] = useState(String(item?.price ?? "").replace(".", ","));
   const [category, setCategory] = useState(item?.category ?? "Bebidas");
   const [customCategory, setCustomCategory] = useState("");
   const [isCustom, setIsCustom] = useState(item?.category ? !DEFAULT_CATEGORIES.includes(item.category) : false);
@@ -172,7 +172,7 @@ function ItemDialog({ item }: { item?: Item }) {
           <div><Label>Nome</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
           <div><Label>Descrição</Label><Input value={description ?? ""} onChange={e => setDescription(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Preço</Label><Input inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></div>
+            <div><Label>Preço</Label><Input type="text" inputMode="decimal" placeholder="0,00" value={price} onChange={e => setPrice(e.target.value)} /></div>
             <div>
               <Label>Categoria</Label>
               <Select
