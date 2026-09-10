@@ -34,6 +34,7 @@ function AuthPage() {
   const [funcCode, setFuncCode] = useState("");
   const [funcPass, setFuncPass] = useState("");
   const [funcRole, setFuncRole] = useState<"garcom" | "cozinha">("garcom");
+  const [funcName, setFuncName] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -94,6 +95,7 @@ function AuthPage() {
       _kiosk_code: funcCode.trim(),
       _password: funcPass,
       _role: funcRole,
+      _employee_name: funcName.trim() || null,
     });
     setLoading(false);
     if (error) return toast.error(error.message);
@@ -103,6 +105,7 @@ function AuthPage() {
       kiosk_name: data.kiosk_name,
       kiosk_code: data.kiosk_code,
       role: data.role,
+      employee_name: data.employee_name,
     });
     toast.success(`Bem-vindo ao ${data.kiosk_name}`);
     navigate({ to: data.role === "cozinha" ? "/cozinha" : "/pedido" });
@@ -188,6 +191,10 @@ function AuthPage() {
                   <button type="button" onClick={() => setFuncRole("garcom")} className={`border p-2 text-xs uppercase tracking-wider ${funcRole === "garcom" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>Garçom</button>
                   <button type="button" onClick={() => setFuncRole("cozinha")} className={`border p-2 text-xs uppercase tracking-wider ${funcRole === "cozinha" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>Cozinha</button>
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="fn">Seu nome</Label>
+                <Input id="fn" required placeholder="Ex: João" value={funcName} onChange={e => setFuncName(e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="fc">Código do quiosque</Label>

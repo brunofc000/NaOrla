@@ -6,6 +6,7 @@ export type EmployeeSession = {
   kiosk_name: string;
   kiosk_code: string;
   role: "garcom" | "cozinha";
+  employee_name?: string | null;
 };
 
 export function getEmployeeSession(): EmployeeSession | null {
