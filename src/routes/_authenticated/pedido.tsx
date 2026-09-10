@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmployeeSession } from "@/lib/employee-session";
 
-type Item = { id: string; name: string; price: number; category: string; is_available: boolean };
+type Item = { id: string; name: string; price: number; category: string; is_available: boolean; image_url?: string | null };
 type Line = { id: string; name: string; price: number; quantity: number; notes?: string };
 
 export const Route = createFileRoute("/_authenticated/pedido")({
@@ -100,9 +100,14 @@ function NovoPedido() {
               return (
                 <li key={i.id} className="p-3 text-sm space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold truncate">{i.name}</p>
-                      <p className="text-xs text-primary font-bold">{brl(i.price)}</p>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {i.image_url && (
+                        <img src={i.image_url} alt={i.name} className="h-12 w-12 object-cover border border-border rounded shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{i.name}</p>
+                        <p className="text-xs text-primary font-bold">{brl(i.price)}</p>
+                      </div>
                     </div>
                     {inCart ? (
                       <div className="flex items-center gap-1">
