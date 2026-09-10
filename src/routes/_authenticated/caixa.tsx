@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, TrendingUp, TrendingDown, Trash2, X } from "lucide-react";
+import { ArrowLeft, Plus, TrendingUp, TrendingDown, Trash2, X, Receipt, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,55 @@ function Caixa() {
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  const { data: openOrders = [] } = useQuery({
+    queryKey: ["open_orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes)")
+        .in("status", ["novo", "preparando", "pronto"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    refetchInterval: 15000,
+  });
+
+  const { data: closedToday = [] } = useQuery({
+    queryKey: ["closed_orders_today"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes)")
+        .eq("status", "entregue")
+        .gte("created_at", start.toISOString())
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const [closing, setClosing] = useState<any>(null);
+  const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro">("pix");
+
+  const closeOrder = useMutation({
+    mutationFn: async ({ orderId, paymentMethod }: { orderId: string; paymentMethod: string }) => {
+      const { error } = await (supabase as any).rpc("close_order", {
+        _order_id: orderId,
+        _payment_method: paymentMethod,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["open_orders"] });
+      qc.invalidateQueries({ queryKey: ["closed_orders_today"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Mesa fechada!");
+      setClosing(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const income = txs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
@@ -95,6 +144,117 @@ function Caixa() {
           </ul>
         )}
       </section>
+
+      {/* Mesas em aberto */}
+      <section>
+        <h2 className="font-display text-xl mb-3">Mesas em aberto ({openOrders.length})</h2>
+        {openOrders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma mesa em aberto no momento.</p>
+        ) : (
+          <ul className="space-y-3">
+            {openOrders.map((o: any) => (
+              <li key={o.id} className="border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold">Mesa {o.table_number}</p>
+                    {o.customer_name && <p className="text-xs text-muted-foreground">{o.customer_name}</p>}
+                  </div>
+                  <span className="font-display text-lg text-primary">{brl(Number(o.total))}</span>
+                </div>
+                <ul className="text-sm space-y-1 mb-3">
+                  {o.order_items.map((i: any) => (
+                    <li key={i.id} className="flex justify-between">
+                      <span>{i.quantity}× {i.name}</span>
+                      <span className="text-muted-foreground">{brl(Number(i.price) * i.quantity)}</span>
+                    </li>
+                  ))}
+                </ul>
+                {o.notes && <p className="text-xs text-muted-foreground mb-2">Obs: {o.notes}</p>}
+                <Button
+                  size="sm"
+                  className="w-full uppercase tracking-wider text-xs"
+                  onClick={() => { setClosing(o); setMethod("pix"); }}
+                >
+                  <Receipt className="h-4 w-4 mr-2" /> Fechar mesa
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Mesas fechadas hoje */}
+      <section>
+        <h2 className="font-display text-xl mb-3">Mesas fechadas hoje ({closedToday.length})</h2>
+        {closedToday.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma mesa fechada hoje.</p>
+        ) : (
+          <ul className="divide-y divide-border border border-border">
+            {closedToday.map((o: any) => (
+              <li key={o.id} className="flex items-center justify-between p-3 text-sm">
+                <div>
+                  <p className="font-semibold">Mesa {o.table_number}</p>
+                  {o.customer_name && <p className="text-xs text-muted-foreground">{o.customer_name}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(o.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-emerald-600" />
+                  <span className="font-bold text-primary">{brl(Number(o.total))}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Modal de fechamento de mesa */}
+      {closing && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => !closeOrder.isPending && setClosing(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold">Fechar mesa {closing.table_number}</h2>
+            <p className="text-sm text-muted-foreground">Confira o total e a forma de pagamento.</p>
+            <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-sm">
+              {closing.order_items.map((i: any) => (
+                <li key={i.id} className="flex justify-between">
+                  <span>{i.quantity}× {i.name}</span>
+                  <span className="text-muted-foreground">{brl(Number(i.price) * i.quantity)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+              <span className="text-sm font-semibold">Total</span>
+              <span className="text-xl font-black text-secondary">{brl(Number(closing.total))}</span>
+            </div>
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold">Forma de pagamento</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(["dinheiro", "pix", "cartao", "outro"] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMethod(m)}
+                    className={`rounded-lg border-2 px-3 py-2 text-sm font-semibold capitalize transition ${
+                      method === m ? "border-secondary bg-secondary/20" : "border-border bg-background"
+                    }`}
+                  >
+                    {m === "cartao" ? "Cartão" : m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setClosing(null)} disabled={closeOrder.isPending}>
+                Cancelar
+              </Button>
+              <Button className="flex-1" onClick={() => closeOrder.mutate({ orderId: closing.id, paymentMethod: method })} disabled={closeOrder.isPending}>
+                {closeOrder.isPending ? "Fechando…" : "Confirmar pagamento"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
