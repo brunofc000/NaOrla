@@ -9,9 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { brl } from "@/lib/format";
 import { useEmployeeSession } from "@/lib/employee-session";
+
+const DEFAULT_CATEGORIES = [
+  "Bebidas",
+  "Porções",
+  "Petiscos",
+  "Pratos",
+  "Sobremesas",
+  "Combos",
+  "Extras",
+];
 
 type Item = { id: string; name: string; description: string | null; price: number; category: string; is_available: boolean; image_url: string | null };
 
@@ -104,7 +115,9 @@ function ItemDialog({ item }: { item?: Item }) {
   const [name, setName] = useState(item?.name ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [price, setPrice] = useState(String(item?.price ?? 0));
-  const [category, setCategory] = useState(item?.category ?? "geral");
+  const [category, setCategory] = useState(item?.category ?? "Bebidas");
+  const [customCategory, setCustomCategory] = useState("");
+  const [isCustom, setIsCustom] = useState(item?.category ? !DEFAULT_CATEGORIES.includes(item.category) : false);
   const [imageUrl, setImageUrl] = useState(item?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
 
@@ -132,7 +145,8 @@ function ItemDialog({ item }: { item?: Item }) {
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Sem sessão");
-      const payload = { name, description: description || null, price: Number(price.replace(",", ".")), category, image_url: imageUrl || null };
+      const finalCategory = isCustom ? (customCategory || "Outros") : category;
+      const payload = { name, description: description || null, price: Number(price.replace(",", ".")), category: finalCategory, image_url: imageUrl || null };
       if (item) {
         const { error } = await supabase.from("menu_items").update(payload).eq("id", item.id);
         if (error) throw error;
@@ -159,7 +173,25 @@ function ItemDialog({ item }: { item?: Item }) {
           <div><Label>Descrição</Label><Input value={description ?? ""} onChange={e => setDescription(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Preço</Label><Input inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></div>
-            <div><Label>Categoria</Label><Input value={category} onChange={e => setCategory(e.target.value)} placeholder="bebidas, petiscos…" /></div>
+            <div>
+              <Label>Categoria</Label>
+              <Select
+                value={isCustom ? "__custom" : category}
+                onValueChange={v => {
+                  if (v === "__custom") { setIsCustom(true); setCategory("Outros"); }
+                  else { setIsCustom(false); setCategory(v); }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {DEFAULT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__custom">Outro...</SelectItem>
+                </SelectContent>
+              </Select>
+              {isCustom && (
+                <Input className="mt-2" placeholder="Nome da categoria" value={customCategory} onChange={e => setCustomCategory(e.target.value)} />
+              )}
+            </div>
           </div>
           <div>
             <Label>Imagem (opcional)</Label>
