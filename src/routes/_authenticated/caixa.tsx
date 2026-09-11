@@ -50,7 +50,7 @@ function Caixa() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes)")
+        .select("id, table_number, customer_name, status, total, notes, created_at, closed_at, closed_by, order_items(id, name, quantity, price, notes)")
         .eq("status", "entregue")
         .gte("created_at", start.toISOString())
         .order("created_at", { ascending: false });
@@ -198,6 +198,11 @@ function Caixa() {
                   <p className="text-xs text-muted-foreground">
                     {new Date(o.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
+                  {o.closed_by && (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      Fechado por {o.closed_by} {o.closed_at ? `às ${new Date(o.closed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-emerald-600" />

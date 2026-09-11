@@ -18,6 +18,8 @@ type Order = {
   total: number;
   notes: string | null;
   created_at: string;
+  closed_at?: string | null;
+  closed_by?: string | null;
   order_items: OrderItem[];
 };
 
@@ -55,7 +57,7 @@ function PedidosOwner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered, created_at, menu_item_id, menu_items(image_url))")
+        .select("id, table_number, customer_name, status, total, notes, created_at, closed_at, closed_by, order_items(id, name, quantity, price, notes, delivered, created_at, menu_item_id, menu_items(image_url))")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -207,6 +209,11 @@ function PedidosOwner() {
                         <p className="text-xs text-muted-foreground">
                           {new Date(o.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {o.order_items.length} itens · toque para ver
                         </p>
+                        {o.status === "entregue" && o.closed_by && (
+                          <p className="text-xs text-emerald-600 font-medium">
+                            Fechado por {o.closed_by} {o.closed_at ? `às ${new Date(o.closed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLOR[o.status] ?? "bg-muted"}`}>
