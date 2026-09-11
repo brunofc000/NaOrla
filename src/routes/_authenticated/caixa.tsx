@@ -61,6 +61,7 @@ function Caixa() {
 
   const [closing, setClosing] = useState<any>(null);
   const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro">("pix");
+  const [cardType, setCardType] = useState<"debito" | "credito">("debito");
 
   const closeOrder = useMutation({
     mutationFn: async ({ orderId, paymentMethod }: { orderId: string; paymentMethod: string }) => {
@@ -248,12 +249,34 @@ function Caixa() {
                   </button>
                 ))}
               </div>
+              {method === "cartao" && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCardType("debito")}
+                    className={`rounded-lg border-2 px-3 py-2 text-sm font-semibold transition ${
+                      cardType === "debito" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"
+                    }`}
+                  >
+                    Débito
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCardType("credito")}
+                    className={`rounded-lg border-2 px-3 py-2 text-sm font-semibold transition ${
+                      cardType === "credito" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"
+                    }`}
+                  >
+                    Crédito
+                  </button>
+                </div>
+              )}
             </div>
             <div className="mt-5 flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setClosing(null)} disabled={closeOrder.isPending}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={() => closeOrder.mutate({ orderId: closing.id, paymentMethod: method })} disabled={closeOrder.isPending}>
+              <Button className="flex-1" onClick={() => closeOrder.mutate({ orderId: closing.id, paymentMethod: method === "cartao" ? `cartao_${cardType}` : method })} disabled={closeOrder.isPending}>
                 {closeOrder.isPending ? "Fechando…" : "Confirmar pagamento"}
               </Button>
             </div>
