@@ -8,9 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brl } from "@/lib/format";
 
 type Product = { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; sell_price: number; unit: string; category: string };
+
+const DEFAULT_STOCK_CATEGORIES = [
+  "Bebidas",
+  "Comidas",
+  "Limpeza",
+  "Embalagens",
+  "Descartáveis",
+  "Ingredientes",
+  "Outros",
+];
 
 export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({ meta: [{ title: "Estoque — NaOrlaApp" }] }),
@@ -117,7 +128,7 @@ function Estoque() {
                     {h.quantity_change > 0 ? '+' : ''}{h.quantity_change} {h.products?.unit ?? 'un'}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    ({h.previous_quantity} → {h.new_quantity})
+                    (abastecido: <span className="font-medium">{h.previous_quantity}</span> → atual: <span className="font-bold">{h.new_quantity}</span>)
                   </span>
                 </div>
               </li>
@@ -134,19 +145,21 @@ function ProductDialog({ product }: { product?: Product }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(product?.name ?? "");
   const [quantity, setQuantity] = useState(String(product?.quantity ?? 0));
-  const [min_quantity, setMin] = useState(String(product?.min_quantity ?? 5));
   const [sell_price, setSell] = useState(String(product?.sell_price ?? "").replace(".", ","));
   const [cost_price, setCost] = useState(String(product?.cost_price ?? "").replace(".", ","));
   const [unit, setUnit] = useState(product?.unit ?? "un");
-  const [category, setCategory] = useState(product?.category ?? "geral");
+  const [category, setCategory] = useState(product?.category ?? "Bebidas");
+  const [customCategory, setCustomCategory] = useState("");
+  const [isCustom, setIsCustom] = useState(product?.category ? !DEFAULT_STOCK_CATEGORIES.includes(product.category) : false);
 
   const save = useMutation({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Sem sessão");
+      const finalCategory = isCustom ? (customCategory || "Outros") : category;
       const payload = {
-        name, unit, category,
-        quantity: Number(quantity), min_quantity: Number(min_quantity),
+        name, unit, category: finalCategory,
+        quantity: Number(quantity), min_quantity: 0,
         sell_price: Number(sell_price.replace(",", ".")), cost_price: Number(cost_price.replace(",", ".")),
       };
       if (product) {
@@ -172,17 +185,32 @@ function ProductDialog({ product }: { product?: Product }) {
         <DialogHeader><DialogTitle className="font-display">{product ? "Editar produto" : "Novo produto"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Nome</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Quantidade</Label><Input inputMode="numeric" value={quantity} onChange={e => setQuantity(e.target.value)} /></div>
-            <div><Label>Mínimo</Label><Input inputMode="numeric" value={min_quantity} onChange={e => setMin(e.target.value)} /></div>
-          </div>
+          <div><Label>Quantidade</Label><Input inputMode="numeric" value={quantity} onChange={e => setQuantity(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Preço venda</Label><Input type="text" inputMode="decimal" placeholder="0,00" value={sell_price} onChange={e => setSell(e.target.value)} /></div>
             <div><Label>Custo</Label><Input type="text" inputMode="decimal" placeholder="0,00" value={cost_price} onChange={e => setCost(e.target.value)} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Unidade</Label><Input value={unit} onChange={e => setUnit(e.target.value)} placeholder="un, kg, L" /></div>
-            <div><Label>Categoria</Label><Input value={category} onChange={e => setCategory(e.target.value)} /></div>
+            <div>
+              <Label>Categoria</Label>
+              <Select
+                value={isCustom ? "__custom" : category}
+                onValueChange={v => {
+                  if (v === "__custom") { setIsCustom(true); setCategory(""); }
+                  else { setIsCustom(false); setCategory(v); }
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DEFAULT_STOCK_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__custom">Personalizado...</SelectItem>
+                </SelectContent>
+              </Select>
+              {isCustom && (
+                <Input className="mt-2" placeholder="Nome da categoria" value={customCategory} onChange={e => setCustomCategory(e.target.value)} />
+              )}
+            </div>
           </div>
         </div>
         <DialogFooter>
