@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, AlertTriangle, Pencil, Trash2, History, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,19 @@ function Estoque() {
       const { data, error } = await supabase.from("products").select("*").eq("is_active", true).order("name");
       if (error) throw error;
       return data as Product[];
+    },
+  });
+
+  const { data: stockHistory = [] } = useQuery({
+    queryKey: ["stock_history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_history")
+        .select("*, products(name, unit)")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -74,6 +87,44 @@ function Estoque() {
           ))}
         </ul>
       )}
+
+      {/* Histórico de estoque */}
+      <section>
+        <h2 className="font-display text-xl mb-3 flex items-center gap-2">
+          <History className="h-5 w-5" />
+          Histórico de estoque
+        </h2>
+        {stockHistory.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma movimentação registrada.</p>
+        ) : (
+          <ul className="divide-y divide-border border border-border">
+            {stockHistory.map((h: any) => (
+              <li key={h.id} className="flex items-center justify-between p-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{h.products?.name ?? 'Produto removido'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(h.created_at).toLocaleDateString("pt-BR")} {new Date(h.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {h.notes && ` · ${h.notes}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {h.quantity_change < 0 ? (
+                    <TrendingDown className="h-4 w-4 text-destructive" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  )}
+                  <span className={`font-bold ${h.quantity_change < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                    {h.quantity_change > 0 ? '+' : ''}{h.quantity_change} {h.products?.unit ?? 'un'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({h.previous_quantity} → {h.new_quantity})
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
