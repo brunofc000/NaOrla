@@ -239,7 +239,7 @@ function CashCloseDialog({ txs }: { txs: Tx[] }) {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => window.print()} className="uppercase tracking-wider text-xs">Imprimir</Button>
-            <Button onClick={() => setOpen(false)} className="uppercase tracking-wider text-xs">Fechar</Button>
+            <Button onClick={() => setOpen(false)} className="uppercase tracking-wider text-xs" type="button">Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
