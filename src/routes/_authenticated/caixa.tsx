@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, TrendingUp, TrendingDown, Trash2, X, Receipt, Check } from "lucide-react";
+import { ArrowLeft, Plus, TrendingUp, TrendingDown, Trash2, X, Receipt, Check, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,35 @@ function Caixa() {
   const [closing, setClosing] = useState<any>(null);
   const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro">("pix");
   const [cardType, setCardType] = useState<"debito" | "credito">("debito");
+  const [sangriaOpen, setSangriaOpen] = useState(false);
+  const [sangriaAmount, setSangriaAmount] = useState("");
+  const [sangriaDescription, setSangriaDescription] = useState("");
+
+  const sangria = useMutation({
+    mutationFn: async () => {
+      const amount = Number(sangriaAmount.replace(",", "."));
+      if (isNaN(amount) || amount <= 0) throw new Error("Valor inválido");
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Sem sessão");
+      const { error } = await supabase.from("transactions").insert({
+        user_id: u.user.id,
+        type: "expense",
+        amount,
+        description: sangriaDescription || "Sangria",
+        category: "sangria",
+        payment_method: "dinheiro",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Sangria registrada!");
+      setSangriaOpen(false);
+      setSangriaAmount("");
+      setSangriaDescription("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const closeOrder = useMutation({
     mutationFn: async ({ orderId, paymentMethod }: { orderId: string; paymentMethod: string }) => {
@@ -114,6 +143,67 @@ function Caixa() {
         <p className="text-xs uppercase tracking-wider text-primary">Lucro</p>
         <p className="font-display text-3xl">{brl(income - expense)}</p>
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          variant="outline"
+          className="w-full uppercase tracking-wider text-xs"
+          onClick={() => setSangriaOpen(true)}
+        >
+          <Minus className="h-4 w-4 mr-2" />Sangria
+        </Button>
+        <Link to="/relatorios" className="w-full">
+          <Button variant="outline" className="w-full uppercase tracking-wider text-xs">
+            <Receipt className="h-4 w-4 mr-2" />Relatório
+          </Button>
+        </Link>
+      </div>
+
+      {/* Dialog de Sangria */}
+      <Dialog open={sangriaOpen} onOpenChange={setSangriaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Registrar Sangria</DialogTitle>
+            <p className="text-xs text-muted-foreground">Retirada de dinheiro do caixa</p>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Valor</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={sangriaAmount}
+                onChange={e => setSangriaAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Descrição (opcional)</Label>
+              <Input
+                placeholder="Ex: Troco, pagamento fornecedor..."
+                value={sangriaDescription}
+                onChange={e => setSangriaDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSangriaOpen(false)}
+              className="uppercase tracking-wider text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => sangria.mutate()}
+              disabled={sangria.isPending || !sangriaAmount}
+              className="uppercase tracking-wider text-xs"
+            >
+              {sangria.isPending ? "Registrando..." : "Confirmar Sangria"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-2 gap-3">
         <TransactionDialog type="income" />
