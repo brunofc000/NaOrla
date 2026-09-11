@@ -1,11 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Users, DollarSign, TrendingUp, Settings, LogOut } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Settings, LogOut, Trash2, UserX, UserCheck, Crown, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — NaOrlaApp" }] }),
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminPanel() {
+  const qc = useQueryClient();
   const navigate = useNavigate();
   const [selectedClient, setSelectedClient] = useState<any>(null);
 
@@ -36,6 +38,36 @@ function AdminPanel() {
   });
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate({ to: "/auth" }); };
+
+  // Mutation para atualizar plano
+  const updatePlan = useMutation({
+    mutationFn: async ({ userId, plan }: { userId: string; plan: string }) => {
+      const { error } = await supabase.from("profiles").update({ plan }).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin_clients"] }); toast.success("Plano atualizado!"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Mutation para ativar/desativar
+  const toggleActive = useMutation({
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      const { error } = await supabase.from("profiles").update({ is_active: isActive }).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin_clients"] }); toast.success("Status atualizado!"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Mutation para deletar
+  const deleteClient = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from("profiles").delete().eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin_clients"] }); setSelectedClient(null); toast.success("Cliente removido!"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <div className="min-h-dvh bg-background">
@@ -74,13 +106,24 @@ function AdminPanel() {
             <div className="border border-border rounded-lg overflow-hidden">
               {clients.map((c: any) => (
                 <div key={c.id} className="flex items-center justify-between p-3 border-b border-border last:border-0 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setSelectedClient(c)}>
-                  <div>
-                    <p className="font-semibold text-sm">{c.display_name || "—"}</p>
-                    <p className="text-xs text-muted-foreground">{c.kiosk_name || "—"} · {c.kiosk_code || "—"}</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm truncate">{c.display_name || "—"}</p>
+                        {!c.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-semibold">INATIVO</span>}
+                        {c.plan === "pro" && <Crown className="h-3.5 w-3.5 text-amber-500" />}
+                        {c.plan === "business" && <Shield className="h-3.5 w-3.5 text-primary" />}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{c.kiosk_name || "—"} · {c.kiosk_code || "—"}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {c.created_at ? new Date(c.created_at).toLocaleDateString("pt-BR") : ""}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                      c.plan === "pro" ? "bg-amber-100 text-amber-700" :
+                      c.plan === "business" ? "bg-primary/10 text-primary" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {c.plan === "pro" ? "PRO" : c.plan === "business" ? "BUSINESS" : "FREE"}
                     </span>
                     <Settings className="h-4 w-4 text-muted-foreground" />
                   </div>
@@ -94,8 +137,8 @@ function AdminPanel() {
       {selectedClient && (
         <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
           <DialogContent>
-            <DialogHeader><DialogTitle className="font-display">Detalhes do cliente</DialogTitle></DialogHeader>
-            <div className="space-y-3 text-sm">
+            <DialogHeader><DialogTitle className="font-display">Gerenciar cliente</DialogTitle></DialogHeader>
+            <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><p className="text-xs text-muted-foreground">Nome</p><p className="font-semibold">{selectedClient.display_name || "—"}</p></div>
                 <div><p className="text-xs text-muted-foreground">Quiosque</p><p className="font-semibold">{selectedClient.kiosk_name || "—"}</p></div>
@@ -104,8 +147,66 @@ function AdminPanel() {
                 <div><p className="text-xs text-muted-foreground">Código</p><p className="font-mono font-semibold">{selectedClient.kiosk_code || "—"}</p></div>
                 <div><p className="text-xs text-muted-foreground">Telefone</p><p className="font-semibold">{selectedClient.phone || "—"}</p></div>
               </div>
-              <div><p className="text-xs text-muted-foreground">ID</p><p className="font-mono text-xs break-all">{selectedClient.id}</p></div>
               <div><p className="text-xs text-muted-foreground">Cadastrado em</p><p className="font-semibold">{selectedClient.created_at ? new Date(selectedClient.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : "—"}</p></div>
+
+              {/* Status */}
+              <div className="border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground mb-2">Status</p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={selectedClient.is_active ? "default" : "outline"}
+                    onClick={() => toggleActive.mutate({ userId: selectedClient.id, isActive: true })}
+                    disabled={toggleActive.isPending}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-1" /> Ativo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={!selectedClient.is_active ? "destructive" : "outline"}
+                    onClick={() => toggleActive.mutate({ userId: selectedClient.id, isActive: false })}
+                    disabled={toggleActive.isPending}
+                  >
+                    <UserX className="h-3.5 w-3.5 mr-1" /> Inativo
+                  </Button>
+                </div>
+              </div>
+
+              {/* Plano */}
+              <div className="border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground mb-2">Plano</p>
+                <div className="flex gap-2">
+                  {["free", "pro", "business"].map(plan => (
+                    <Button
+                      key={plan}
+                      size="sm"
+                      variant={selectedClient.plan === plan ? "default" : "outline"}
+                      onClick={() => updatePlan.mutate({ userId: selectedClient.id, plan })}
+                      disabled={updatePlan.isPending}
+                      className="uppercase tracking-wider text-[10px]"
+                    >
+                      {plan === "free" ? "Free" : plan === "pro" ? "Pro" : "Business"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Deletar */}
+              <div className="border-t border-border pt-3">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm(`Tem certeza que deseja excluir ${selectedClient.display_name}? Essa ação é irreversível.`)) {
+                      deleteClient.mutate(selectedClient.id);
+                    }
+                  }}
+                  disabled={deleteClient.isPending}
+                  className="w-full uppercase tracking-wider text-xs"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir permanentemente
+                </Button>
+              </div>
             </div>
             <DialogFooter><Button variant="outline" onClick={() => setSelectedClient(null)} className="uppercase tracking-wider text-xs">Fechar</Button></DialogFooter>
           </DialogContent>
