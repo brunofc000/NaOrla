@@ -142,7 +142,7 @@ function AuthPage() {
             <form onSubmit={handleLogin} className="space-y-3">
               <div>
                 <Label htmlFor="le">Usuário ou E-mail</Label>
-                <Input id="le" type="text" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="brunolipe" />
+                <Input id="le" type="text" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="seu@email.com" />
               </div>
               <div>
                 <Label htmlFor="lp">Senha</Label>
