@@ -14,6 +14,7 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 
 function Relatorios() {
   const [selectedClosure, setSelectedClosure] = useState<any>(null);
+  const [selectedDay, setSelectedDay] = useState<any>(null);
   const since = new Date(); since.setDate(since.getDate() - 30);
   const { data } = useQuery({
     queryKey: ["report-30d"],
@@ -62,6 +63,49 @@ function Relatorios() {
     enabled: !!selectedClosure,
   });
 
+  const { data: dayOrders = [] } = useQuery({
+    queryKey: ["day_orders", selectedDay?.date?.toISOString()],
+    queryFn: async () => {
+      if (!selectedDay) return [];
+      const startOfDay = new Date(selectedDay.date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDay.date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, table_number, customer_name, status, total, payment_method, closed_at, closed_by, order_items(name, quantity, price)")
+        .eq("status", "entregue")
+        .gte("closed_at", startOfDay.toISOString())
+        .lte("closed_at", endOfDay.toISOString())
+        .order("closed_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!selectedDay,
+  });
+
+  const { data: dayTransactions = [] } = useQuery({
+    queryKey: ["day_transactions", selectedDay?.date?.toISOString()],
+    queryFn: async () => {
+      if (!selectedDay) return [];
+      const startOfDay = new Date(selectedDay.date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDay.date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("type, amount, description, category, payment_method, created_at")
+        .gte("created_at", startOfDay.toISOString())
+        .lte("created_at", endOfDay.toISOString())
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!selectedDay,
+  });
+
   const list = data ?? [];
   const income = list.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
   const expense = list.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
@@ -105,12 +149,20 @@ function Relatorios() {
         <h2 className="font-display text-xl mb-3">Últimos 7 dias</h2>
         <ul className="space-y-2">
           {days.map(d => (
-            <li key={d.date.toISOString()} className="text-sm">
+            <li 
+              key={d.date.toISOString()} 
+              className="text-sm p-3 border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors"
+              onClick={() => setSelectedDay(d)}
+            >
               <div className="flex justify-between mb-1">
                 <span className="font-semibold">{d.date.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}</span>
                 <span className={`font-bold ${d.profit >= 0 ? "text-primary" : "text-destructive"}`}>{brl(d.profit)}</span>
               </div>
-              <div className="h-2 bg-muted overflow-hidden">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Entradas: {brl(d.inc)}</span>
+                <span>Saídas: {brl(d.exp)}</span>
+              </div>
+              <div className="h-2 bg-muted overflow-hidden mt-1">
                 <div className="h-full bg-primary" style={{ width: `${(d.inc / max) * 100}%` }} />
               </div>
             </li>
@@ -227,6 +279,108 @@ function Relatorios() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelectedClosure(null)} className="uppercase tracking-wider text-xs">
+                Fechar
+              </Button>
+              <Button onClick={() => window.print()} className="uppercase tracking-wider text-xs">
+                Imprimir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog de detalhes do dia */}
+      {selectedDay && (
+        <Dialog open={!!selectedDay} onOpenChange={() => setSelectedDay(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-display">
+                {selectedDay.date.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Resumo do dia */}
+              <div className="grid grid-cols-3 gap-2 border border-border p-3">
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Entradas</p>
+                  <p className="font-display text-lg text-primary">{brl(selectedDay.inc)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Saídas</p>
+                  <p className="font-display text-lg text-destructive">{brl(selectedDay.exp)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground">Lucro</p>
+                  <p className={`font-display text-lg ${selectedDay.profit >= 0 ? "text-primary" : "text-destructive"}`}>{brl(selectedDay.profit)}</p>
+                </div>
+              </div>
+
+              {/* Pedidos fechados no dia */}
+              <div>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Pedidos fechados ({dayOrders.length})
+                </h3>
+                {dayOrders.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum pedido encontrado.</p>
+                ) : (
+                  <ul className="divide-y divide-border border border-border max-h-40 overflow-y-auto">
+                    {dayOrders.map((o: any) => (
+                      <li key={o.id} className="p-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="font-semibold">Mesa {o.table_number}</span>
+                          <span className="font-bold">{brl(Number(o.total))}</span>
+                        </div>
+                        {o.closed_by && (
+                          <p className="text-muted-foreground">
+                            Fechado por {o.closed_by} às {new Date(o.closed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                        <p className="text-muted-foreground">
+                          {o.payment_method === "dinheiro" ? "Dinheiro" :
+                           o.payment_method === "pix" ? "PIX" :
+                           o.payment_method === "cartao_debito" ? "Cartão Débito" :
+                           o.payment_method === "cartao_credito" ? "Cartão Crédito" :
+                           o.payment_method === "outro" ? "Outro" : o.payment_method}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Transações do dia */}
+              <div>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Transações ({dayTransactions.length})
+                </h3>
+                {dayTransactions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma transação encontrada.</p>
+                ) : (
+                  <ul className="divide-y divide-border border border-border max-h-40 overflow-y-auto">
+                    {dayTransactions.map((t: any, i: number) => (
+                      <li key={i} className="p-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="font-semibold">{t.description || t.category}</span>
+                          <span className={`font-bold ${t.type === "income" ? "text-primary" : "text-destructive"}`}>
+                            {t.type === "income" ? "+" : "-"}{brl(Number(t.amount))}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground">
+                          {new Date(t.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          {t.payment_method && ` · ${t.payment_method}`}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedDay(null)} className="uppercase tracking-wider text-xs">
                 Fechar
               </Button>
               <Button onClick={() => window.print()} className="uppercase tracking-wider text-xs">
