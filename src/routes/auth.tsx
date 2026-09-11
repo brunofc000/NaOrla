@@ -46,13 +46,13 @@ function AuthPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // Se não tem @, é username → converter para email fake
     const email = loginEmail.includes("@") ? loginEmail : `${loginEmail.toLowerCase().trim()}@naorla.app`;
-    const { error } = await supabase.auth.signInWithPassword({ email, password: loginPass });
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password: loginPass });
     setLoading(false);
     if (error) return toast.error("Usuário ou senha incorretos");
     toast.success("Bem-vindo de volta! 🌊");
-    navigate({ to: "/dashboard" });
+    const isAdmin = email === "brunodfreitas02@gmail.com";
+    navigate({ to: isAdmin ? "/admin" : "/dashboard" });
   }
 
   async function handleSignup(e: React.FormEvent) {

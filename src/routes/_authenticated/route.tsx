@@ -6,6 +6,7 @@ import { WaiterNotifier } from "@/components/WaiterNotifier";
 
 const WAITER_ALLOWED = ["/pedido", "/pedidos", "/cardapio"];
 const KITCHEN_ALLOWED = ["/cozinha", "/cardapio"];
+const ADMIN_EMAILS = ["brunodfreitas02@gmail.com"];
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -21,6 +22,13 @@ export const Route = createFileRoute("/_authenticated")({
     }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+
+    // Admin: redirecionar para /admin se estiver em /dashboard
+    const isAdmin = ADMIN_EMAILS.includes(data.user.email ?? "");
+    if (isAdmin && location.pathname === "/dashboard") {
+      throw redirect({ to: "/admin" });
+    }
+
     return { user: data.user, employee: null };
   },
   component: AuthenticatedShell,
