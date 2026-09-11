@@ -153,7 +153,7 @@ function Caixa() {
         ) : (
           <ul className="space-y-3">
             {openOrders.map((o: any) => (
-              <li key={o.id} className="border border-border p-4">
+              <li key={o.id} className="border border-amber-200 bg-amber-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-semibold">Mesa {o.table_number}</p>
@@ -189,9 +189,9 @@ function Caixa() {
         {closedToday.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma mesa fechada hoje.</p>
         ) : (
-          <ul className="divide-y divide-border border border-border">
+          <ul className="space-y-2">
             {closedToday.map((o: any) => (
-              <li key={o.id} className="flex items-center justify-between p-3 text-sm">
+              <li key={o.id} className="flex items-center justify-between p-3 text-sm border border-emerald-200 bg-emerald-50 rounded-lg">
                 <div>
                   <p className="font-semibold">Mesa {o.table_number}</p>
                   {o.customer_name && <p className="text-xs text-muted-foreground">{o.customer_name}</p>}
