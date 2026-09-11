@@ -167,7 +167,9 @@ function ModuleCard({ to, icon, label, badge }: { to: string; icon: React.ReactN
 type Tx = { type: string; amount: number | string; payment_method?: string | null; category?: string | null };
 
 function CashCloseDialog({ txs }: { txs: Tx[] }) {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const income = txs.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
   const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
   const profit = income - expense;
@@ -180,6 +182,28 @@ function CashCloseDialog({ txs }: { txs: Tx[] }) {
     const exp = txs.filter(t => t.type === "expense" && (t.payment_method ?? "").toLowerCase() === m).reduce((s, t) => s + Number(t.amount), 0);
     return { m, inc, exp };
   }).filter(r => r.inc !== 0 || r.exp !== 0);
+
+  const finalizeDay = useMutation({
+    mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Sem sessão");
+      const { error } = await supabase.from("cash_closures").insert({
+        user_id: u.user.id,
+        total_income: income,
+        total_expense: expense,
+        profit,
+        sales_count: salesCount,
+        ticket_avg: ticket,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Dia finalizado com sucesso!");
+      setConfirmOpen(false);
+      setOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <>
@@ -239,7 +263,36 @@ function CashCloseDialog({ txs }: { txs: Tx[] }) {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => window.print()} className="uppercase tracking-wider text-xs">Imprimir</Button>
-            <Button onClick={() => setOpen(false)} className="uppercase tracking-wider text-xs" type="button">Fechar</Button>
+            <Button onClick={() => setConfirmOpen(true)} className="uppercase tracking-wider text-xs bg-destructive hover:bg-destructive/90" type="button">
+              Finalizar Dia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Finalizar Dia</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Você deseja zerar o valor e finalizar o dia de hoje?
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Isso irá registrar o fechamento do caixa com os valores atuais.
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} className="uppercase tracking-wider text-xs">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => finalizeDay.mutate()}
+              disabled={finalizeDay.isPending}
+              className="uppercase tracking-wider text-xs bg-destructive hover:bg-destructive/90"
+            >
+              {finalizeDay.isPending ? "Finalizando..." : "Sim, finalizar dia"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
