@@ -46,9 +46,11 @@ function AuthPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPass });
+    // Se não tem @, é username → converter para email fake
+    const email = loginEmail.includes("@") ? loginEmail : `${loginEmail.toLowerCase().trim()}@naorla.local`;
+    const { error } = await supabase.auth.signInWithPassword({ email, password: loginPass });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error("Usuário ou senha incorretos");
     toast.success("Bem-vindo de volta! 🌊");
     navigate({ to: "/dashboard" });
   }
@@ -139,8 +141,8 @@ function AuthPage() {
           <TabsContent value="login" className="space-y-4 pt-4">
             <form onSubmit={handleLogin} className="space-y-3">
               <div>
-                <Label htmlFor="le">E-mail</Label>
-                <Input id="le" type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />
+                <Label htmlFor="le">Usuário ou E-mail</Label>
+                <Input id="le" type="text" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="brunolipe" />
               </div>
               <div>
                 <Label htmlFor="lp">Senha</Label>
