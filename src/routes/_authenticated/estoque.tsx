@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brl } from "@/lib/format";
 
-type Product = { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; sell_price: number; unit: string; category: string };
+type Product = { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; sell_price: number; unit: string; category: string; initial_quantity?: number | null };
 
 const DEFAULT_STOCK_CATEGORIES = [
   "Bebidas",
@@ -87,7 +87,19 @@ function Estoque() {
             <li key={p.id} className="flex items-center justify-between p-3 text-sm">
               <div className="min-w-0">
                 <p className="font-semibold truncate">{p.name}</p>
-                <p className="text-xs text-muted-foreground">{p.quantity} {p.unit} · {brl(p.sell_price)} · {p.category}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {p.initial_quantity != null && p.initial_quantity !== p.quantity ? (
+                      <>
+                        <span className="line-through">{p.initial_quantity}</span> → <span className="font-bold text-primary">{p.quantity}</span>
+                      </>
+                    ) : (
+                      <span className="font-bold">{p.quantity}</span>
+                    )}
+                    {" "}{p.unit}
+                  </span>
+                  <span className="text-xs text-muted-foreground">· {brl(p.sell_price)} · {p.category}</span>
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 {p.quantity <= p.min_quantity && <AlertTriangle className="h-4 w-4 text-destructive" />}
@@ -160,6 +172,7 @@ function ProductDialog({ product }: { product?: Product }) {
       const payload = {
         name, unit, category: finalCategory,
         quantity: Number(quantity), min_quantity: 0,
+        initial_quantity: product ? undefined : Number(quantity),
         sell_price: Number(sell_price.replace(",", ".")), cost_price: Number(cost_price.replace(",", ".")),
       };
       if (product) {
