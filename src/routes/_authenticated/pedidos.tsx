@@ -276,6 +276,7 @@ function PedidosWaiter() {
   const [closing, setClosing] = useState<Order | null>(null);
   const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro">("pix");
   const [cardType, setCardType] = useState<"debito" | "credito">("debito");
+  const [includeServiceCharge, setIncludeServiceCharge] = useState(true);
   const [cancelling, setCancelling] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
 
@@ -313,16 +314,17 @@ function PedidosWaiter() {
   });
 
   const closeOrder = useMutation({
-    mutationFn: async ({ orderId, paymentMethod }: { orderId: string; paymentMethod: string }) => {
+    mutationFn: async ({ orderId, paymentMethod, serviceCharge }: { orderId: string; paymentMethod: string; serviceCharge: number }) => {
       if (!employee) throw new Error("Apenas funcionários podem fechar mesas");
       const { error } = await (supabase as any).rpc("employee_close_order_v2", {
-        _token: employee.token, _order_id: orderId, _payment_method: paymentMethod,
+        _token: employee.token, _order_id: orderId, _payment_method: paymentMethod, _service_charge: serviceCharge,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Mesa fechada e pagamento registrado!");
       setClosing(null);
+      setIncludeServiceCharge(true);
       qc.invalidateQueries({ queryKey: ["waiter_orders"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao fechar mesa"),
@@ -503,10 +505,50 @@ function PedidosWaiter() {
                 </li>
               ))}
             </ul>
+            
+            {/* Subtotal */}
             <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-              <span className="text-sm font-semibold">Total</span>
-              <span className="text-xl font-black text-secondary">{brl(closing.total)}</span>
+              <span className="text-sm text-muted-foreground">Subtotal</span>
+              <span className="text-sm font-semibold">{brl(closing.total)}</span>
             </div>
+
+            {/* 10% do garçom */}
+            <button
+              type="button"
+              onClick={() => setIncludeServiceCharge(!includeServiceCharge)}
+              className={`w-full mt-2 flex items-center justify-between rounded-lg border-2 px-3 py-2.5 text-sm transition ${
+                includeServiceCharge 
+                  ? "border-emerald-500 bg-emerald-500/10" 
+                  : "border-border bg-background"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`h-5 w-5 rounded border-2 flex items-center justify-center transition ${
+                  includeServiceCharge 
+                    ? "border-emerald-500 bg-emerald-500" 
+                    : "border-muted-foreground"
+                }`}>
+                  {includeServiceCharge && (
+                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="font-medium">10% Garçom</span>
+              </div>
+              <span className={includeServiceCharge ? "font-bold text-emerald-700" : "text-muted-foreground"}>
+                +{brl(closing.total * 0.1)}
+              </span>
+            </button>
+
+            {/* Total final */}
+            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+              <span className="text-base font-bold">Total a pagar</span>
+              <span className="text-xl font-black text-secondary">
+                {brl(includeServiceCharge ? closing.total * 1.1 : closing.total)}
+              </span>
+            </div>
+
             <div className="mt-4">
               <p className="mb-2 text-sm font-semibold">Forma de pagamento</p>
               <div className="grid grid-cols-2 gap-2">
@@ -550,8 +592,16 @@ function PedidosWaiter() {
               <Button variant="outline" className="flex-1" onClick={() => setClosing(null)} disabled={closeOrder.isPending}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={() => closeOrder.mutate({ orderId: closing.id, paymentMethod: method === "cartao" ? `cartao_${cardType}` : method })} disabled={closeOrder.isPending}>
-                {closeOrder.isPending ? "Fechando…" : "Confirmar pagamento"}
+              <Button 
+                className="flex-1" 
+                onClick={() => closeOrder.mutate({ 
+                  orderId: closing.id, 
+                  paymentMethod: method === "cartao" ? `cartao_${cardType}` : method,
+                  serviceCharge: includeServiceCharge ? Math.round(closing.total * 0.1 * 100) / 100 : 0,
+                })} 
+                disabled={closeOrder.isPending}
+              >
+                {closeOrder.isPending ? "Fechando…" : `Pagar ${brl(includeServiceCharge ? closing.total * 1.1 : closing.total)}`}
               </Button>
             </div>
           </div>
