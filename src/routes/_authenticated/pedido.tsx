@@ -3,13 +3,23 @@ import { useState } from "react";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Minus, Plus, Trash2, Send } from "lucide-react";
+import { Minus, Plus, Trash2, Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmployeeSession } from "@/lib/employee-session";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 type Item = { id: string; name: string; price: number; category: string; is_available: boolean; image_url?: string | null };
 type Line = { id: string; name: string; price: number; quantity: number; notes?: string };
@@ -28,6 +38,7 @@ function NovoPedido() {
   const [customer, setCustomer] = useState("");
   const [notes, setNotes] = useState("");
   const [cart, setCart] = useState<Line[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: items = [] } = useQuery({
     queryKey: ["employee_menu", employee?.kiosk_user_id ?? "owner"],
@@ -146,12 +157,69 @@ function NovoPedido() {
               <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Mesa {table || "—"}</p>
               <p className="font-display text-lg">{count} {count === 1 ? "item" : "itens"} · <span className="text-primary">{brl(total)}</span></p>
             </div>
-            <Button onClick={() => send.mutate()} disabled={send.isPending || !table.trim()} className="uppercase tracking-wider text-xs">
+            <Button onClick={() => setConfirmOpen(true)} disabled={send.isPending || !table.trim()} className="uppercase tracking-wider text-xs">
               <Send className="h-4 w-4 mr-2" />{send.isPending ? "Enviando…" : "Enviar"}
             </Button>
           </div>
         </div>
       )}
+
+      {/* Diálogo de confirmação antes de enviar o pedido */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirmar envio do pedido
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Revise os itens abaixo antes de enviar para a cozinha. Essa ação não pode ser desfeita facilmente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
+              <span className="text-sm font-semibold">Mesa</span>
+              <span className="text-sm font-bold text-primary">{table || "—"}</span>
+            </div>
+            {customer.trim() && (
+              <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
+                <span className="text-sm font-semibold">Cliente</span>
+                <span className="text-sm">{customer.trim()}</span>
+              </div>
+            )}
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {cart.map(c => (
+                <li key={c.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <div>
+                    <span className="font-medium">{c.quantity}× {c.name}</span>
+                    {c.notes && <span className="block text-xs text-muted-foreground">obs: {c.notes}</span>}
+                  </div>
+                  <span className="text-muted-foreground">{brl(c.price * c.quantity)}</span>
+                </li>
+              ))}
+            </ul>
+            {notes.trim() && (
+              <p className="text-xs text-muted-foreground">Obs. geral: {notes.trim()}</p>
+            )}
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="text-sm font-semibold">Total</span>
+              <span className="text-lg font-black text-primary">{brl(total)}</span>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={send.isPending}>Revisar pedido</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => send.mutate()}
+              disabled={send.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {send.isPending ? "Enviando…" : "Confirmar envio"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -2,12 +2,22 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, Receipt, Trash2, Minus, Plus, X, PlusCircle } from "lucide-react";
+import { Check, Receipt, Trash2, Minus, Plus, X, PlusCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { brl } from "@/lib/format";
 import { useEmployeeSession } from "@/lib/employee-session";
+import {
+  AlertDialog as AlertDialogUI,
+  AlertDialogContent as AlertDialogContentUI,
+  AlertDialogHeader as AlertDialogHeaderUI,
+  AlertDialogTitle as AlertDialogTitleUI,
+  AlertDialogDescription as AlertDialogDescriptionUI,
+  AlertDialogFooter as AlertDialogFooterUI,
+  AlertDialogAction as AlertDialogActionUI,
+  AlertDialogCancel as AlertDialogCancelUI,
+} from "@/components/ui/alert-dialog";
 
 type OrderItem = { id: string; name: string; quantity: number; price: number; notes?: string | null; delivered?: boolean; created_at?: string; menu_item_id?: string | null; menu_items?: { image_url: string | null } | null };
 type Order = {
@@ -266,6 +276,8 @@ function PedidosWaiter() {
   const [closing, setClosing] = useState<Order | null>(null);
   const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro">("pix");
   const [cardType, setCardType] = useState<"debito" | "credito">("debito");
+  const [cancelling, setCancelling] = useState<Order | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["waiter_orders", employee?.token ?? "owner"],
@@ -446,7 +458,7 @@ function PedidosWaiter() {
                         <button
                           type="button"
                           aria-label="Remover item"
-                          onClick={() => { if (confirm(`Remover ${i.name}?`)) removeItem.mutate(i.id); }}
+                          onClick={() => removeItem.mutate(i.id)}
                           disabled={removeItem.isPending}
                           className="rounded border border-border p-1 text-destructive"
                         ><Trash2 className="h-3 w-3" /></button>
@@ -461,7 +473,7 @@ function PedidosWaiter() {
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">Total {brl(o.total)}</p>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => { if (confirm(`Cancelar pedido da mesa ${o.table_number}?`)) cancelOrder.mutate(o.id); }}>
+                <Button size="sm" variant="outline" onClick={() => { setCancelling(o); setCancelReason(""); }}>
                   <X className="mr-1 h-4 w-4" /> Cancelar
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => { setClosing(o); setMethod("pix"); }}>
@@ -544,6 +556,61 @@ function PedidosWaiter() {
             </div>
           </div>
         </div>
+      )}{/* Fechamento de mesa */}
+
+      {/* Diálogo de confirmação de cancelamento */}
+      {cancelling && (
+        <AlertDialogUI open={!!cancelling} onOpenChange={(open) => { if (!open) { setCancelling(null); setCancelReason(""); } }}>
+          <AlertDialogContentUI className="max-w-md">
+            <AlertDialogHeaderUI>
+              <AlertDialogTitleUI className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Cancelar pedido
+              </AlertDialogTitleUI>
+              <AlertDialogDescriptionUI>
+                Tem certeza que deseja cancelar o pedido da <strong>mesa {cancelling.table_number}</strong>?
+                {cancelling.customer_name && <> Cliente: <strong>{cancelling.customer_name}</strong></>}
+                <br />
+                <span className="text-xs">O pedido ficará registrado como "Pedido cancelado" na comanda.</span>
+              </AlertDialogDescriptionUI>
+            </AlertDialogHeaderUI>
+
+            <div className="space-y-3">
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {cancelling.order_items.map(i => (
+                  <li key={i.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span>{i.quantity}× {i.name}</span>
+                    <span className="text-muted-foreground">{brl(i.price * i.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center justify-between border-t border-border pt-2">
+                <span className="text-sm font-semibold">Total</span>
+                <span className="text-sm font-bold text-muted-foreground line-through">{brl(cancelling.total)}</span>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Motivo do cancelamento (opcional)</label>
+                <Input
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  placeholder="Ex: cliente desistiu, pedido duplicado…"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <AlertDialogFooterUI>
+              <AlertDialogCancelUI disabled={cancelOrder.isPending}>Voltar</AlertDialogCancelUI>
+              <AlertDialogActionUI
+                onClick={() => cancelOrder.mutate(cancelling.id)}
+                disabled={cancelOrder.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {cancelOrder.isPending ? "Cancelando…" : "Confirmar cancelamento"}
+              </AlertDialogActionUI>
+            </AlertDialogFooterUI>
+          </AlertDialogContentUI>
+        </AlertDialogUI>
       )}
     </div>
   );
