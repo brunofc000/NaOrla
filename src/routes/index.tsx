@@ -38,9 +38,7 @@ function Landing() {
         {/* Header */}
         <header className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground font-display italic text-lg">
-              N
-            </span>
+            <img src="/logo-icon.jpg" alt="NaOrla" className="h-9 w-9 rounded-full object-cover" />
             <span className="font-display text-xl font-bold tracking-tight normal-case">
               NaOrla<span className="text-primary">APP</span>
             </span>

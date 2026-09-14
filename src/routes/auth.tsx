@@ -122,9 +122,7 @@ function AuthPage() {
         className="w-full max-w-md border border-border bg-card p-8 sm:p-10"
       >
         <Link to="/" className="flex items-center justify-center gap-2.5">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground font-display italic text-lg">
-            N
-          </span>
+          <img src="/logo-icon.jpg" alt="NaOrla" className="h-10 w-10 rounded-full object-cover" />
           <span className="font-display text-xl font-bold tracking-tight normal-case">
             NaOrla<span className="text-primary">APP</span>
           </span>
