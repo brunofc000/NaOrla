@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, AlertTriangle, Pencil, Trash2, History, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, Plus, AlertTriangle, Pencil, Trash2, History, TrendingDown, TrendingUp, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brl } from "@/lib/format";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 
-type Product = { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; sell_price: number; unit: string; category: string; initial_quantity?: number | null };
+type Product = { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; sell_price: number; unit: string; category: string; initial_quantity?: number | null; barcode?: string | null };
 
 const DEFAULT_STOCK_CATEGORIES = [
   "Bebidas",
@@ -30,6 +31,11 @@ export const Route = createFileRoute("/_authenticated/estoque")({
 
 function Estoque() {
   const qc = useQueryClient();
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
@@ -62,6 +68,18 @@ function Estoque() {
 
   const low = products.filter(p => p.quantity <= p.min_quantity);
 
+  const handleBarcodeScan = (barcode: string) => {
+    setScannedBarcode(barcode);
+    // Check if product with this barcode already exists
+    const existingProduct = products.find(p => p.barcode === barcode);
+    if (existingProduct) {
+      setEditingProduct(existingProduct);
+    } else {
+      setEditingProduct(null);
+    }
+    setProductDialogOpen(true);
+  };
+
   return (
     <div className="space-y-5">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Voltar</Link>
@@ -70,8 +88,35 @@ function Estoque() {
           <p className="text-[11px] uppercase tracking-[0.3em] text-primary">Estoque</p>
           <h1 className="font-display text-3xl">{products.length} produtos</h1>
         </div>
-        <ProductDialog />
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="uppercase tracking-wider text-xs" onClick={() => setScannerOpen(true)}>
+            <ScanBarcode className="h-4 w-4 mr-1" />Escanear
+          </Button>
+          <ProductDialog
+            open={productDialogOpen}
+            onOpenChange={(open) => {
+              setProductDialogOpen(open);
+              if (!open) {
+                setScannedBarcode(null);
+                setEditingProduct(null);
+              }
+            }}
+            product={editingProduct}
+            initialBarcode={scannedBarcode}
+            trigger={
+              <Button size="sm" className="uppercase tracking-wider text-xs">
+                <Plus className="h-4 w-4 mr-1" />Novo
+              </Button>
+            }
+          />
+        </div>
       </header>
+
+      <BarcodeScanner
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScan={handleBarcodeScan}
+      />
 
       {low.length > 0 && (
         <div className="border border-destructive/40 bg-destructive/5 p-3 text-sm">
@@ -87,6 +132,9 @@ function Estoque() {
             <li key={p.id} className="flex items-center justify-between p-3 text-sm">
               <div className="min-w-0">
                 <p className="font-semibold truncate">{p.name}</p>
+                {p.barcode && (
+                  <p className="text-[10px] text-muted-foreground font-mono">#{p.barcode}</p>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
                     {p.initial_quantity != null && p.initial_quantity !== p.quantity ? (
@@ -152,9 +200,17 @@ function Estoque() {
   );
 }
 
-function ProductDialog({ product }: { product?: Product }) {
+function ProductDialog({ product, initialBarcode, open: controlledOpen, onOpenChange: controlledOnOpenChange, trigger }: {
+  product?: Product | null;
+  initialBarcode?: string | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
+}) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [name, setName] = useState(product?.name ?? "");
   const [quantity, setQuantity] = useState(String(product?.quantity ?? 0));
   const [sell_price, setSell] = useState(String(product?.sell_price ?? "").replace(".", ","));
@@ -163,6 +219,7 @@ function ProductDialog({ product }: { product?: Product }) {
   const [category, setCategory] = useState(product?.category ?? "Bebidas");
   const [customCategory, setCustomCategory] = useState("");
   const [isCustom, setIsCustom] = useState(product?.category ? !DEFAULT_STOCK_CATEGORIES.includes(product.category) : false);
+  const [barcode, setBarcode] = useState(product?.barcode ?? initialBarcode ?? "");
 
   const save = useMutation({
     mutationFn: async () => {
@@ -174,6 +231,7 @@ function ProductDialog({ product }: { product?: Product }) {
         quantity: Number(quantity), min_quantity: 0,
         initial_quantity: product ? undefined : Number(quantity),
         sell_price: Number(sell_price.replace(",", ".")), cost_price: Number(cost_price.replace(",", ".")),
+        barcode: barcode.trim() || null,
       };
       if (product) {
         const { error } = await supabase.from("products").update(payload).eq("id", product.id);
@@ -190,9 +248,11 @@ function ProductDialog({ product }: { product?: Product }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {product
-          ? <Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>
-          : <Button size="sm" className="uppercase tracking-wider text-xs"><Plus className="h-4 w-4 mr-1" />Novo</Button>}
+        {trigger ?? (
+          product
+            ? <Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>
+            : <Button size="sm" className="uppercase tracking-wider text-xs"><Plus className="h-4 w-4 mr-1" />Novo</Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle className="font-display">{product ? "Editar produto" : "Novo produto"}</DialogTitle></DialogHeader>
@@ -223,6 +283,17 @@ function ProductDialog({ product }: { product?: Product }) {
               {isCustom && (
                 <Input className="mt-2" placeholder="Nome da categoria" value={customCategory} onChange={e => setCustomCategory(e.target.value)} />
               )}
+            </div>
+          </div>
+          <div>
+            <Label>Código de Barras (opcional)</Label>
+            <div className="flex gap-2">
+              <Input
+                value={barcode}
+                onChange={e => setBarcode(e.target.value)}
+                placeholder="Digite ou escaneie o código"
+                inputMode="numeric"
+              />
             </div>
           </div>
         </div>
