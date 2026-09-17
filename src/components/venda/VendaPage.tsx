@@ -21,6 +21,10 @@ export default function VendaPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cancellingSale, setCancellingSale] = useState<CompletedSale | null>(null);
   const [cancelPassword, setCancelPassword] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerMode, setScannerMode] = useState<"camera" | "manual" | null>(null);
+  const [manualBarcode, setManualBarcode] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
@@ -47,7 +51,10 @@ export default function VendaPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Sem sessão");
       const { data, error } = await supabase.from("profiles").select("cancel_password").eq("id", user.id).single();
-      if (error) throw error;
+      if (error) {
+        // cancel_password column may not exist yet, return null
+        return { cancel_password: null };
+      }
       return data;
     },
   });
