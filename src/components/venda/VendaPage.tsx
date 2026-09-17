@@ -281,10 +281,11 @@ export default function VendaPage() {
           <button
             onClick={() => setCheckoutOpen(true)}
             className="fixed right-4 bottom-24 z-30 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-sm
-              h-14 px-6 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              h-14 px-6 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-3 transition-all hover:scale-105 active:scale-95"
           >
             <ShoppingCart className="h-5 w-5" />
             <span>Finalizar · {brl(cartTotal)}</span>
+            <kbd className="text-[10px] font-mono bg-emerald-800/60 rounded px-1.5 py-0.5 ml-1">F2</kbd>
           </button>
         </>
       )}
