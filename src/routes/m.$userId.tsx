@@ -2,13 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Minus, Plus, ShoppingBag, Trash2, Check } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, Check, Bell, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { CustomerOrderTracker } from "@/components/CustomerOrderTracker";
 
 export const Route = createFileRoute("/m/$userId")({
   head: () => ({ meta: [{ title: "Cardápio" }] }),
@@ -22,19 +23,30 @@ function PublicMenu() {
   const { userId } = Route.useParams();
   const storageKey = `cart:${userId}`;
   const tableKey = `table:${userId}`;
+  const nameKey = `customer_name:${userId}`;
   const [table, setTable] = useState<string>("");
+  const [customerName, setCustomerName] = useState<string>("");
   const [askTable, setAskTable] = useState(false);
   const [tableInput, setTableInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [checkout, setCheckout] = useState(false);
+  const [showTracker, setShowTracker] = useState(false);
+  const [callingWaiter, setCallingWaiter] = useState(false);
+
+  // Read mesa from URL params
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const mesaParam = searchParams?.get("mesa") ?? "";
 
   useEffect(() => {
     const t = typeof window !== "undefined" ? localStorage.getItem(tableKey) : null;
-    if (t) setTable(t);
+    const n = typeof window !== "undefined" ? localStorage.getItem(nameKey) : null;
+    if (t) { setTable(t); if (n) setCustomerName(n); }
+    else if (mesaParam) { setTableInput(mesaParam); setAskTable(true); }
     else setAskTable(true);
     const c = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
     if (c) try { setCart(JSON.parse(c)); } catch {/* ignore */}
-  }, [storageKey, tableKey]);
+  }, [storageKey, tableKey, nameKey, mesaParam]);
 
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(storageKey, JSON.stringify(cart));
@@ -80,16 +92,37 @@ function PublicMenu() {
 
   function confirmTable() {
     const t = tableInput.trim();
+    const n = nameInput.trim();
     if (!t) return;
+    if (!n) { toast.error("Digite seu nome"); return; }
     setTable(t);
-    if (typeof window !== "undefined") localStorage.setItem(tableKey, t);
+    setCustomerName(n);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(tableKey, t);
+      localStorage.setItem(nameKey, n);
+    }
     setAskTable(false);
   }
 
   function changeTable() {
     setTableInput(table);
+    setNameInput(customerName);
     setAskTable(true);
   }
+
+  // Call waiter mutation
+  const callWaiterMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("call_waiter" as any, {
+        _kiosk_user_id: userId,
+        _table_number: table,
+        _customer_name: customerName || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Garçom chamado! Aguarde na mesa."); setCallingWaiter(false); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <div className="min-h-dvh bg-background text-foreground pb-32">
@@ -104,9 +137,11 @@ function PublicMenu() {
             <span className="h-px w-8 bg-border" />
           </div>
           {table && (
-            <button onClick={changeTable} className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 border border-border bg-background text-[11px] uppercase tracking-[0.25em] hover:bg-muted transition-colors">
-              <Check className="h-3 w-3" />Mesa {table} · trocar
-            </button>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <button onClick={changeTable} className="inline-flex items-center gap-2 px-3 py-1.5 border border-border bg-background text-[11px] uppercase tracking-[0.25em] hover:bg-muted transition-colors">
+                <Check className="h-3 w-3" />Mesa {table}{customerName ? ` · ${customerName}` : ""} · trocar
+              </button>
+            </div>
           )}
         </div>
 
@@ -189,15 +224,65 @@ function PublicMenu() {
         </div>
       )}
 
-      {/* Diálogo: pedir mesa */}
+      {/* Botões flutuantes: Chamar Garçom + Meus Pedidos */}
+      {table && (
+        <div className="fixed bottom-20 right-4 flex flex-col gap-2 z-30">
+          <button onClick={() => setShowTracker(true)}
+            className="h-12 w-12 rounded-full bg-background border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors"
+            title="Meus pedidos">
+            <ClipboardList className="h-5 w-5 text-primary" />
+          </button>
+          <button onClick={() => setCallingWaiter(true)}
+            className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+            title="Chamar garçom">
+            <Bell className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
+      {/* Dialog: Chamar Garçom */}
+      <Dialog open={callingWaiter} onOpenChange={setCallingWaiter}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle className="font-display">Chamar Garçom</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            O garçom será notificado que a <strong>Mesa {table}</strong>{customerName ? ` (${customerName})` : ""} precisa de atendimento.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCallingWaiter(false)}>Cancelar</Button>
+            <Button onClick={() => callWaiterMut.mutate()} disabled={callWaiterMut.isPending}>
+              {callWaiterMut.isPending ? "Chamando…" : "Chamar Agora"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Meus Pedidos (acompanhamento) */}
+      <Dialog open={showTracker} onOpenChange={setShowTracker}>
+        <DialogContent className="sm:max-w-md max-h-[80dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="font-display">Meus Pedidos</DialogTitle></DialogHeader>
+          <CustomerOrderTracker userId={userId} table={table} customerName={customerName} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo: pedir mesa e nome */}
       <Dialog open={askTable} onOpenChange={(o) => { if (!o && table) setAskTable(false); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle className="font-display">Qual a sua mesa?</DialogTitle></DialogHeader>
-          <p className="text-xs text-muted-foreground">Digite o número da sua mesa para começar.</p>
-          <Input autoFocus value={tableInput} onChange={e => setTableInput(e.target.value)} placeholder="Ex: 5"
-            onKeyDown={e => { if (e.key === "Enter") confirmTable(); }} />
+          <DialogHeader><DialogTitle className="font-display">Bem-vindo!</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">Digite o número da sua mesa e seu nome para começar.</p>
+          <div className="space-y-3">
+            <div>
+              <Label>Número da mesa</Label>
+              <Input autoFocus value={tableInput} onChange={e => setTableInput(e.target.value)} placeholder="Ex: 5"
+                onKeyDown={e => { if (e.key === "Enter") confirmTable(); }} />
+            </div>
+            <div>
+              <Label>Seu nome</Label>
+              <Input value={nameInput} onChange={e => setNameInput(e.target.value)} placeholder="Ex: João"
+                onKeyDown={e => { if (e.key === "Enter") confirmTable(); }} />
+            </div>
+          </div>
           <DialogFooter>
-            <Button onClick={confirmTable} disabled={!tableInput.trim()} className="w-full uppercase tracking-wider text-xs">Continuar</Button>
+            <Button onClick={confirmTable} disabled={!tableInput.trim() || !nameInput.trim()} className="w-full uppercase tracking-wider text-xs">Continuar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -210,6 +295,7 @@ function PublicMenu() {
         total={total}
         userId={userId}
         table={table}
+        customerName={customerName}
         onPlaced={() => { setCart([]); if (typeof window !== "undefined") localStorage.removeItem(storageKey); setCheckout(false); }}
         onUpdate={{ inc: add, dec, remove }}
         items={items}
@@ -219,15 +305,15 @@ function PublicMenu() {
 }
 
 function CheckoutDialog({
-  open, onOpenChange, cart, total, userId, table, onPlaced, onUpdate, items,
+  open, onOpenChange, cart, total, userId, table, customerName, onPlaced, onUpdate, items,
 }: {
   open: boolean; onOpenChange: (v: boolean) => void;
-  cart: CartLine[]; total: number; userId: string; table: string;
+  cart: CartLine[]; total: number; userId: string; table: string; customerName: string;
   onPlaced: () => void;
   onUpdate: { inc: (i: Item) => void; dec: (id: string) => void; remove: (id: string) => void };
   items: Item[];
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(customerName || "");
   const [phone, setPhone] = useState("");
   const [cpf, setCpf] = useState("");
   const [notes, setNotes] = useState("");
