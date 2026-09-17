@@ -98,6 +98,10 @@ export default function VendaPage() {
     }).filter(Boolean));
   };
 
+  const removeFromCart = (productId: string) => setCart(prev => prev.filter(i => i.product_id !== productId));
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
+
   const checkout = useMutation({
     mutationFn: async (paymentMethod: string) => {
       const { data: { user } } = await supabase.auth.getUser();
