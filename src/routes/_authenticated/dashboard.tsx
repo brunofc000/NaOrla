@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Wallet, Package, BarChart3, Users, UtensilsCrossed, Truck, Bell, ChefHat, ClipboardList, Calculator,
+  Wallet, Package, BarChart3, Users, UtensilsCrossed, Truck, Bell, ChefHat, ClipboardList, Calculator, ShoppingCart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -96,6 +96,7 @@ function Dashboard() {
       <div>
         <h2 className="mb-3 font-bold">Mais módulos</h2>
         <div className="grid grid-cols-2 gap-3">
+          <ModuleCard to="/venda" icon={<ShoppingCart />} label="Registrar Venda" highlight />
           <ModuleCard to="/cardapio" icon={<UtensilsCrossed />} label="Cardápio" />
           <ModuleCard to="/cozinha" icon={<ChefHat />} label="Cozinha" />
           <ModuleCard to="/pedidos" icon={<ClipboardList />} label="Pedidos" />
@@ -153,10 +154,10 @@ function QuickAction({ to, icon, label, tint }: { to: string; icon: React.ReactN
   );
 }
 
-function ModuleCard({ to, icon, label, badge }: { to: string; icon: React.ReactNode; label: string; badge?: number }) {
+function ModuleCard({ to, icon, label, badge, highlight }: { to: string; icon: React.ReactNode; label: string; badge?: number; highlight?: boolean }) {
   return (
-    <Link to={to} className="glass rounded-2xl p-4 flex items-center gap-3 transition-transform active:scale-95 relative">
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-foreground">{icon}</span>
+    <Link to={to} className={`glass rounded-2xl p-4 flex items-center gap-3 transition-transform active:scale-95 relative ${highlight ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}>
+      <span className={`grid h-10 w-10 place-items-center rounded-xl ${highlight ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>{icon}</span>
       <span className="font-semibold text-sm">{label}</span>
       {!!badge && badge > 0 && (
         <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs font-black text-destructive-foreground">{badge}</span>

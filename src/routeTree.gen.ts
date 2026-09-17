@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MUserIdRouteImport } from './routes/m.$userId'
+import { Route as AuthenticatedVendaRouteImport } from './routes/_authenticated/venda'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
@@ -45,6 +46,11 @@ const MUserIdRoute = MUserIdRouteImport.update({
   id: '/m/$userId',
   path: '/m/$userId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedVendaRoute = AuthenticatedVendaRouteImport.update({
+  id: '/venda',
+  path: '/venda',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
   id: '/relatorios',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/venda': typeof AuthenticatedVendaRoute
   '/m/$userId': typeof MUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/venda': typeof AuthenticatedVendaRoute
   '/m/$userId': typeof MUserIdRoute
 }
 export interface FileRoutesById {
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/_authenticated/venda': typeof AuthenticatedVendaRoute
   '/m/$userId': typeof MUserIdRoute
 }
 export interface FileRouteTypes {
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/perfil'
     | '/relatorios'
+    | '/venda'
     | '/m/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/perfil'
     | '/relatorios'
+    | '/venda'
     | '/m/$userId'
   id:
     | '__root__'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pedidos'
     | '/_authenticated/perfil'
     | '/_authenticated/relatorios'
+    | '/_authenticated/venda'
     | '/m/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -264,6 +276,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/m/$userId'
       preLoaderRoute: typeof MUserIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/venda': {
+      id: '/_authenticated/venda'
+      path: '/venda'
+      fullPath: '/venda'
+      preLoaderRoute: typeof AuthenticatedVendaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/relatorios': {
       id: '/_authenticated/relatorios'
@@ -373,6 +392,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
+  AuthenticatedVendaRoute: typeof AuthenticatedVendaRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -389,6 +409,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
+  AuthenticatedVendaRoute: AuthenticatedVendaRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

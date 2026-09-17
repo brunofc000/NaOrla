@@ -445,6 +445,7 @@ export type Database = {
         Row: {
           address: string | null
           avatar_url: string | null
+          cancel_password: string | null
           created_at: string
           display_name: string
           employee_password: string | null
@@ -460,6 +461,7 @@ export type Database = {
         Insert: {
           address?: string | null
           avatar_url?: string | null
+          cancel_password?: string | null
           created_at?: string
           display_name?: string
           employee_password?: string | null
@@ -475,6 +477,7 @@ export type Database = {
         Update: {
           address?: string | null
           avatar_url?: string | null
+          cancel_password?: string | null
           created_at?: string
           display_name?: string
           employee_password?: string | null
