@@ -169,6 +169,17 @@ export default function VendaPage() {
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
+  // Keyboard shortcut: F2 to open checkout
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F2" && cart.length !== 0) {
+        e.preventDefault();
+        setCheckoutOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [cart]);
   const activeSales = todaySales.filter(s => !s.description?.includes("[CANCELADA]"));
 
   return (
@@ -251,18 +262,31 @@ export default function VendaPage() {
       </div>
 
       {cart.length !== 0 && (
-        <div className="border-t border-border bg-background/95 backdrop-blur px-4 py-4 sticky bottom-0 z-20">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">{cartCount} {cartCount === 1 ? "item" : "itens"}</p>
-              <p className="font-display text-2xl font-bold">{brl(cartTotal)}</p>
+        <>
+          {/* Resumo do carrinho - fixo no rodapé */}
+          <div className="border-t border-border bg-background/95 backdrop-blur px-4 py-3 fixed bottom-0 left-0 right-0 z-20">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{cartCount} {cartCount === 1 ? "item" : "itens"}</p>
+                <p className="font-display text-xl font-bold">{brl(cartTotal)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setCart([])}><Trash2 className="h-4 w-4 mr-1" />Limpar</Button>
+                <span className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5 font-mono">F2</span>
+              </div>
             </div>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setCart([])}><Trash2 className="h-4 w-4 mr-1" />Limpar</Button>
           </div>
-          <Button className="w-full h-14 text-base font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setCheckoutOpen(true)}>
-            <ShoppingCart className="h-5 w-5 mr-2" />Finalizar Venda — {brl(cartTotal)}
-          </Button>
-        </div>
+
+          {/* Botão Finalizar - fixo na lateral direita, mais para cima */}
+          <button
+            onClick={() => setCheckoutOpen(true)}
+            className="fixed right-4 bottom-24 z-30 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-sm
+              h-14 px-6 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            <span>Finalizar · {brl(cartTotal)}</span>
+          </button>
+        </>
       )}
 
       <ScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} scannerMode={scannerMode} setScannerMode={setScannerMode}
