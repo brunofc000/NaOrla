@@ -25,6 +25,7 @@ export default function VendaPage() {
   const [scannerMode, setScannerMode] = useState<"camera" | "manual" | null>(null);
   const [manualBarcode, setManualBarcode] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const lastInputTime = useRef<number>(0);
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
@@ -74,7 +75,9 @@ export default function VendaPage() {
       return [...prev, { product_id: product.id, name: product.name, price: Number(product.sell_price), quantity: 1, max_quantity: product.quantity, unit: product.unit }];
     });
     setSearchQuery("");
-    searchRef.current?.focus();
+    toast.success(product.name + " adicionado");
+    // Re-focus immediately for next scan (USB scanner or manual)
+    setTimeout(() => searchRef.current?.focus(), 10);
   }, []);
 
   const handleSearchSubmit = useCallback(() => {
@@ -158,6 +161,14 @@ export default function VendaPage() {
   });
 
   useEffect(() => { searchRef.current?.focus(); }, []);
+  // Re-focus after cart changes (critical for USB scanners)
+  useEffect(() => { setTimeout(() => searchRef.current?.focus(), 50); }, [cart]);
+  // Re-focus when window regains focus (USB scanner may steal focus)
+  useEffect(() => {
+    const handleFocus = () => setTimeout(() => searchRef.current?.focus(), 100);
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
   const activeSales = todaySales.filter(s => !s.description?.includes("[CANCELADA]"));
 
   return (
@@ -179,17 +190,18 @@ export default function VendaPage() {
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input ref={searchRef} placeholder="Escaneie o código ou pesquise pelo nome..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleSearchSubmit(); }}
-              className="pl-10 pr-10 h-12 text-base" inputMode="search" />
+            <Input ref={searchRef} placeholder="Escanear código de barras ou pesquisar..." value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); lastInputTime.current = Date.now(); }}
+              onKeyDown={e => { if (e.key === "Enter") handleSearchSubmit(); }}
+              className="pl-10 pr-10 h-12 text-base font-mono" inputMode="search" autoComplete="off" />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
-          <Button variant="outline" size="icon" className="h-12 w-12 shrink-0" onClick={() => setScannerOpen(true)}>
-            <ScanBarcode className="h-5 w-5" />
+          <Button variant="outline" size="icon" className="h-12 w-12 shrink-0" title="Escanear com câmera do celular" onClick={() => setScannerOpen(true)}>
+            <Camera className="h-5 w-5" />
           </Button>
         </div>
         {searchResults.length > 0 && (
@@ -215,7 +227,7 @@ export default function VendaPage() {
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <ShoppingCart className="h-16 w-16 mb-4 opacity-20" />
             <p className="text-lg font-display">Carrinho vazio</p>
-            <p className="text-sm">Escaneie ou pesquise um produto</p>
+            <p className="text-sm text-center max-w-xs">Use o leitor de código de barras, pesquise pelo nome, ou clique na câmera para escanear</p>
           </div>
         ) : (
           <div className="py-3 space-y-2">
@@ -274,11 +286,12 @@ function ScannerDialog({ open, onOpenChange, scannerMode, setScannerMode, manual
   return (
     <Dialog open={open} onOpenChange={handleScannerOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle className="font-display">Código de Barras</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-display">Escanear Código</DialogTitle></DialogHeader>
+        <p className="text-xs text-muted-foreground -mt-2">Para leitor USB, use o campo principal na tela.</p>
         {!scannerMode && (
           <div className="space-y-3">
             <Button variant="outline" className="w-full justify-start gap-3 h-14" onClick={() => setScannerMode("camera")}>
-              <Camera className="h-5 w-5 text-primary" /><div className="text-left"><p className="font-semibold">Escanear com câmera</p><p className="text-xs text-muted-foreground">Aponte para o código</p></div>
+              <Camera className="h-5 w-5 text-primary" /><div className="text-left"><p className="font-semibold">Câmera do celular</p><p className="text-xs text-muted-foreground">Aponte para o código de barras</p></div>
             </Button>
             <Button variant="outline" className="w-full justify-start gap-3 h-14" onClick={() => setScannerMode("manual")}>
               <Keyboard className="h-5 w-5 text-primary" /><div className="text-left"><p className="font-semibold">Digitar código</p><p className="text-xs text-muted-foreground">Insira o código manualmente</p></div>
