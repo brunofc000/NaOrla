@@ -8,6 +8,7 @@ const ownerItems = [
   { to: "/dashboard", label: "Início", icon: Home },
   { to: "/caixa", label: "Caixa", icon: Wallet },
   { to: "/estoque", label: "Estoque", icon: Package },
+  { to: "/mesas", label: "Pedidos", icon: ClipboardList },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/perfil", label: "Perfil", icon: User },
 ] as const;
