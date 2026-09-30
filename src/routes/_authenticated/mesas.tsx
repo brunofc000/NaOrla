@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check, Clock, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { brl } from "@/lib/format";
+import { brl, minutesSince, waitingLabel, waitingChipClass } from "@/lib/format";
 
 type OrderItem = {
   id: string;
@@ -12,6 +12,7 @@ type OrderItem = {
   price: number;
   notes: string | null;
   delivered: boolean;
+  created_at?: string | null;
 };
 
 type Order = {
@@ -33,6 +34,7 @@ type TableGroup = {
   total: number;
   firstAt: string;
   customers: string[];
+  oldestPending: { name: string; since: string } | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -58,13 +60,20 @@ export const Route = createFileRoute("/_authenticated/mesas")({
 
 function MesasPage() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Relógio para atualizar os "há X min" sem depender de refetch
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["owner_open_tables"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered)")
+        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered, created_at)")
         .in("status", ["novo", "preparando", "pronto"])
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -81,7 +90,7 @@ function MesasPage() {
     const key = o.table_number ?? "";
     let group = index.get(key);
     if (!group) {
-      group = { table: key, orders: [], itemsCount: 0, pendingCount: 0, total: 0, firstAt: o.created_at, customers: [] };
+      group = { table: key, orders: [], itemsCount: 0, pendingCount: 0, total: 0, firstAt: o.created_at, customers: [], oldestPending: null };
       index.set(key, group);
       tables.push(group);
     }
@@ -91,13 +100,19 @@ function MesasPage() {
     if (o.customer_name && !group.customers.includes(o.customer_name)) group.customers.push(o.customer_name);
     for (const it of o.order_items ?? []) {
       group.itemsCount += 1;
-      if (!it.delivered) group.pendingCount += 1;
+      if (!it.delivered) {
+        group.pendingCount += 1;
+        const since = it.created_at ?? o.created_at;
+        if (!group.oldestPending || since < group.oldestPending.since) {
+          group.oldestPending = { name: it.name, since };
+        }
+      }
     }
   }
   tables.sort((a, b) => a.table.localeCompare(b.table, "pt-BR", { numeric: true }));
 
   const table = selected ? tables.find(t => t.table === selected) : undefined;
-  if (table) return <TableDetail table={table} onBack={() => setSelected(null)} />;
+  if (table) return <TableDetail table={table} now={now} onBack={() => setSelected(null)} />;
 
   const totalPending = tables.reduce((s, t) => s + t.pendingCount, 0);
 
@@ -148,6 +163,14 @@ function MesasPage() {
                 </span>
               )}
             </div>
+            {t.oldestPending && (
+              <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${waitingChipClass(minutesSince(t.oldestPending.since, now))}`}>
+                <Clock className="h-3 w-3 shrink-0" />
+                <span className="truncate">
+                  Pediu {t.oldestPending.name} {waitingLabel(t.oldestPending.since, now)}
+                </span>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               {t.orders.length} pedido{t.orders.length === 1 ? "" : "s"} · desde{" "}
               {new Date(t.firstAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -163,7 +186,7 @@ function MesasPage() {
   );
 }
 
-function TableDetail({ table, onBack }: { table: TableGroup; onBack: () => void }) {
+function TableDetail({ table, now, onBack }: { table: TableGroup; now: number; onBack: () => void }) {
   return (
     <div className="space-y-5">
       <button
@@ -235,9 +258,9 @@ function TableDetail({ table, onBack }: { table: TableGroup; onBack: () => void 
                       Entregue
                     </span>
                   ) : (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${waitingChipClass(minutesSince(it.created_at ?? o.created_at, now))}`}>
                       <Clock className="h-3 w-3" />
-                      Pendente
+                      Pendente {waitingLabel(it.created_at ?? o.created_at, now)}
                     </span>
                   )}
                 </li>

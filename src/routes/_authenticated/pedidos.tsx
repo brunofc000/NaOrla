@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, Receipt, Trash2, Minus, Plus, X, PlusCircle, AlertTriangle } from "lucide-react";
+import { Check, Receipt, Trash2, Minus, Plus, X, PlusCircle, AlertTriangle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { brl } from "@/lib/format";
+import { brl, minutesSince, waitingLabel, waitingChipClass } from "@/lib/format";
 import { useEmployeeSession } from "@/lib/employee-session";
 import {
   AlertDialog as AlertDialogUI,
@@ -269,6 +269,29 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
+function WaitingStrip({ order, now }: { order: Order; now: number }) {
+  const pending = order.order_items.filter(i => !i.delivered);
+  if (pending.length === 0) return null;
+  let oldest = pending[0];
+  let oldestSince = pending[0].created_at ?? order.created_at;
+  for (const i of pending) {
+    const since = i.created_at ?? order.created_at;
+    if (since < oldestSince) {
+      oldest = i;
+      oldestSince = since;
+    }
+  }
+  return (
+    <div className={`mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${waitingChipClass(minutesSince(oldestSince, now))}`}>
+      <Clock className="h-3 w-3 shrink-0" />
+      <span>
+        Pediu {oldest.name} {waitingLabel(oldestSince, now)}
+        {pending.length > 1 ? ` · +${pending.length - 1} a entregar` : ""}
+      </span>
+    </div>
+  );
+}
+
 function PedidosWaiter() {
   const employee = useEmployeeSession();
   const [q, setQ] = useState("");
@@ -279,6 +302,13 @@ function PedidosWaiter() {
   const [includeServiceCharge, setIncludeServiceCharge] = useState(true);
   const [cancelling, setCancelling] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+
+  // Relógio para atualizar os "há X min" sem depender de refetch
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["waiter_orders", employee?.token ?? "owner"],
@@ -291,7 +321,7 @@ function PedidosWaiter() {
       // Owner view: query orders directly
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered)")
+        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered, created_at)")
         .in("status", ["novo", "preparando", "pronto"])
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -412,6 +442,7 @@ function PedidosWaiter() {
                 </Link>
               </div>
             </div>
+            <WaitingStrip order={o} now={now} />
             <ul className="mt-3 space-y-1 text-sm">
               {o.order_items.map(i => (
                 <li key={i.id} className="flex items-start justify-between gap-2">
