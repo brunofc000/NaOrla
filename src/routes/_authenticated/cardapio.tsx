@@ -86,20 +86,25 @@ function Cardapio() {
           <h2 className="font-display text-xl mb-2 uppercase text-primary text-sm tracking-wider">{cat}</h2>
           <ul className="divide-y divide-border border border-border">
             {list.map(i => (
-              <li key={i.id} className={`flex items-center justify-between p-3 text-sm ${!i.is_available ? "opacity-50" : ""}`}>
-                <div className="min-w-0">
-                  {i.image_url && <img src={i.image_url} alt={i.name} className="float-left h-12 w-12 object-cover mr-2 border border-border" />}
-                  <p className="font-semibold">{i.name}</p>
-                  {i.description && <p className="text-xs text-muted-foreground">{i.description}</p>}
-                  <p className="text-xs font-bold text-primary">{brl(i.price)}</p>
-                </div>
-                {!employee && (
-                  <div className="flex items-center gap-2">
-                    <Switch checked={i.is_available} onCheckedChange={() => toggle.mutate(i)} />
-                    <ItemDialog item={i} />
-                    <Button size="icon" variant="ghost" onClick={() => del.mutate(i.id)}><Trash2 className="h-4 w-4" /></Button>
+              <li key={i.id} className={`p-3 text-sm space-y-1.5 ${!i.is_available ? "opacity-50" : ""}`}>
+                {/* Nome sempre em UMA linha */}
+                <p className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{i.name}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {i.image_url && <img src={i.image_url} alt={i.name} className="h-12 w-12 object-cover border border-border shrink-0" />}
+                    <div className="min-w-0">
+                      {i.description && <p className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">{i.description}</p>}
+                      <p className="text-xs font-bold text-primary">{brl(i.price)}</p>
+                    </div>
                   </div>
-                )}
+                  {!employee && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Switch checked={i.is_available} onCheckedChange={() => toggle.mutate(i)} />
+                      <ItemDialog item={i} />
+                      <Button size="icon" variant="ghost" onClick={() => del.mutate(i.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

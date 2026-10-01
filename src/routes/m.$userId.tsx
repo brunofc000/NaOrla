@@ -175,26 +175,26 @@ function PublicMenu() {
               {list.map((i) => {
                 const inCart = cart.find(c => c.id === i.id);
                 return (
-                  <li key={i.id} className="group flex items-baseline gap-4 py-4 border-b border-dashed border-border/60 hover:border-primary/40 transition-colors">
+                  <li key={i.id} className="group flex items-start gap-4 py-4 border-b border-dashed border-border/60 hover:border-primary/40 transition-colors">
                     {i.image_url && (
                       <img src={i.image_url} alt={i.name} className="h-20 w-20 object-cover border border-border shrink-0 self-center" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-3">
-                        <p className="font-display text-lg leading-tight">{i.name}</p>
-                        <span className="flex-1 border-b border-dotted border-border/70 translate-y-[-4px]" />
-                        <p className="font-display text-lg text-primary tabular-nums">{brl(i.price)}</p>
-                      </div>
+                      {/* Nome sempre em UMA linha */}
+                      <p className="font-display text-base sm:text-lg leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{i.name}</p>
                       {i.description && <p className="text-sm text-muted-foreground mt-1 leading-relaxed pr-4">{i.description}</p>}
+                      <div className="mt-1.5 flex items-center justify-between gap-3">
+                        <p className="font-display text-lg text-primary tabular-nums">{brl(i.price)}</p>
+                        <Button
+                          size="sm"
+                          variant={inCart ? "secondary" : "outline"}
+                          onClick={() => add(i)}
+                          className="uppercase tracking-[0.2em] text-[10px] shrink-0 min-w-[90px]"
+                        >
+                          {inCart ? <><Check className="h-3 w-3 mr-1" />{inCart.quantity} no pedido</> : <><Plus className="h-3 w-3 mr-1" />Adicionar</>}
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={inCart ? "secondary" : "outline"}
-                      onClick={() => add(i)}
-                      className="uppercase tracking-[0.2em] text-[10px] shrink-0 self-center min-w-[90px]"
-                    >
-                      {inCart ? <><Check className="h-3 w-3 mr-1" />{inCart.quantity} no pedido</> : <><Plus className="h-3 w-3 mr-1" />Adicionar</>}
-                    </Button>
                   </li>
                 );
               })}

@@ -230,7 +230,7 @@ function VendaAvulsa() {
 
       {catalog.length === 0 && <p className="text-sm text-muted-foreground">Nada encontrado.</p>}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {catalog.map(item => (
           <button
             key={item.kind + item.id}
@@ -238,7 +238,7 @@ function VendaAvulsa() {
             onClick={() => add(item)}
             className="border border-border bg-muted/30 p-3 text-left space-y-1 hover:border-secondary hover:bg-secondary/10 transition-colors"
           >
-            <p className="font-semibold text-sm leading-tight">{item.name}</p>
+            <p className="font-semibold text-sm leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{item.name}</p>
             <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
               {item.kind === "menu" ? "Cardápio" : "Estoque"}
               {item.kind === "product" && item.stock !== undefined ? ` · ${item.stock} un` : ""}

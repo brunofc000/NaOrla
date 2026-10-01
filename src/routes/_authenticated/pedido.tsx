@@ -124,15 +124,14 @@ function NovoPedido() {
               const inCart = cart.find(c => c.id === i.id);
               return (
                 <li key={i.id} className="p-3 text-sm space-y-2">
+                  {/* Nome sempre em UMA linha */}
+                  <p className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{i.name}</p>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       {i.image_url && (
                         <img src={i.image_url} alt={i.name} className="h-12 w-12 object-cover border border-border rounded shrink-0" />
                       )}
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{i.name}</p>
-                        <p className="text-xs text-primary font-bold">{brl(i.price)}</p>
-                      </div>
+                      <p className="text-xs text-primary font-bold">{brl(i.price)}</p>
                     </div>
                     {inCart ? (
                       <div className="flex items-center gap-1">
