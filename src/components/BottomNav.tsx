@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Wallet, Package, BarChart3, User, ChefHat, BookOpen, LogOut, ClipboardList, ListChecks } from "lucide-react";
+import { Home, Wallet, Package, BarChart3, User, ChefHat, BookOpen, LogOut, ClipboardList, ListChecks, ShoppingCart } from "lucide-react";
 import { useEmployeeSession, clearEmployeeSession, getEmployeeSession } from "@/lib/employee-session";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
@@ -15,6 +15,7 @@ const ownerItems = [
 
 const waiterItems = [
   { to: "/pedido", label: "Pedido", icon: ClipboardList },
+  { to: "/venda-avulsa", label: "Venda", icon: ShoppingCart },
   { to: "/pedidos", label: "Status", icon: ListChecks },
   { to: "/cardapio", label: "Cardápio", icon: BookOpen },
 ] as const;

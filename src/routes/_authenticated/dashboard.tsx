@@ -26,13 +26,16 @@ function Dashboard() {
       const start = new Date(); start.setHours(0, 0, 0, 0);
       const { data: txs } = await supabase
         .from("transactions")
-        .select("type, amount, created_at, description, payment_method, category")
+        .select("type, amount, created_at, description, payment_method, category, is_fiado, fiado_paid_at")
         .gte("created_at", start.toISOString())
         .order("created_at", { ascending: false });
-      const income = txs?.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0) ?? 0;
+      // Fiado ainda não pago não entra como "entrada recebida"
+      const received = txs?.filter(t => t.type === "income" && (!t.is_fiado || t.fiado_paid_at)) ?? [];
+      const pendingFiado = (txs?.filter(t => t.type === "income" && t.is_fiado && !t.fiado_paid_at) ?? []).reduce((s, t) => s + Number(t.amount), 0);
+      const income = received.reduce((s, t) => s + Number(t.amount), 0);
       const expense = txs?.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0) ?? 0;
-      const salesCount = txs?.filter(t => t.type === "income").length ?? 0;
-      return { income, expense, profit: income - expense, ticket: salesCount ? income / salesCount : 0, salesCount, last: txs?.slice(0, 5) ?? [], all: txs ?? [] };
+      const salesCount = received.length;
+      return { income, expense, profit: income - expense, ticket: salesCount ? income / salesCount : 0, salesCount, pendingFiado, last: txs?.slice(0, 5) ?? [], all: txs ?? [] };
     },
   });
 
@@ -78,6 +81,14 @@ function Dashboard() {
             </div>
           </div>
         </div>
+        {(today?.pendingFiado ?? 0) > 0 && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2">
+            <span className="text-xs font-semibold text-destructive">
+              Fiado a receber: {brl(today!.pendingFiado)}
+            </span>
+            <Link to="/clientes" className="text-xs font-bold text-destructive underline ml-auto">Ver clientes</Link>
+          </div>
+        )}
         <CashCloseDialog txs={today?.all ?? []} />
       </motion.div>
 
@@ -86,7 +97,9 @@ function Dashboard() {
         <h2 className="mb-3 font-bold">Ações rápidas</h2>
         <div className="grid grid-cols-2 gap-3">
           <QuickAction to="/caixa" icon={<Wallet />} label="Registrar venda" tint="gradient-ocean" />
+          <QuickAction to="/venda-avulsa" icon={<ShoppingCart />} label="Venda avulsa" tint="bg-success/20" />
           <QuickAction to="/estoque" icon={<Package />} label="Baixar estoque" tint="bg-secondary/20" />
+          <QuickAction to="/clientes" icon={<Users />} label="Clientes fiéis" tint="bg-primary/20" />
           <QuickAction to="/funcionarios" icon={<Users />} label="Funcionários" tint="bg-primary/20" />
           <QuickAction to="/relatorios" icon={<BarChart3 />} label="Relatórios" tint="bg-warning/20" />
         </div>

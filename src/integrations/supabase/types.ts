@@ -103,6 +103,44 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          created_at: string
+          cpf: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cpf?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cpf?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_sessions: {
         Row: {
           created_at: string
@@ -727,8 +765,12 @@ export type Database = {
           amount: number
           category: string
           created_at: string
+          created_by_employee: string | null
+          customer_id: string | null
           description: string
+          fiado_paid_at: string | null
           id: string
+          is_fiado: boolean
           payment_method: string
           type: string
           user_id: string
@@ -737,8 +779,12 @@ export type Database = {
           amount: number
           category?: string
           created_at?: string
+          created_by_employee?: string | null
+          customer_id?: string | null
           description?: string
+          fiado_paid_at?: string | null
           id?: string
+          is_fiado?: boolean
           payment_method?: string
           type: string
           user_id: string
@@ -747,8 +793,12 @@ export type Database = {
           amount?: number
           category?: string
           created_at?: string
+          created_by_employee?: string | null
+          customer_id?: string | null
           description?: string
+          fiado_paid_at?: string | null
           id?: string
+          is_fiado?: boolean
           payment_method?: string
           type?: string
           user_id?: string
@@ -759,6 +809,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -774,6 +831,21 @@ export type Database = {
         Returns: string
       }
       _verify_employee_token: { Args: { _token: string }; Returns: string }
+      create_walkin_sale: {
+        Args: {
+          _items: Json
+          _payment_method: string
+          _customer_id?: string
+          _notes?: string
+          _token?: string
+          _seller_name?: string
+        }
+        Returns: string
+      }
+      employee_get_products_v2: {
+        Args: { _token: string }
+        Returns: Json
+      }
       employee_cancel_order_v2: {
         Args: { _order_id: string; _token: string }
         Returns: undefined

@@ -4,7 +4,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { getEmployeeSession } from "@/lib/employee-session";
 import { WaiterNotifier } from "@/components/WaiterNotifier";
 
-const WAITER_ALLOWED = ["/pedido", "/pedidos", "/cardapio"];
+const WAITER_ALLOWED = ["/pedido", "/pedidos", "/cardapio", "/venda-avulsa"];
 const KITCHEN_ALLOWED = ["/cozinha", "/cardapio"];
 const ADMIN_EMAILS = ["brunodfreitas02@gmail.com"];
 

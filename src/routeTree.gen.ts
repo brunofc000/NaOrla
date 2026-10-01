@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MUserIdRouteImport } from './routes/m.$userId'
+import { Route as AuthenticatedVendaAvulsaRouteImport } from './routes/_authenticated/venda-avulsa'
 import { Route as AuthenticatedVendaRouteImport } from './routes/_authenticated/venda'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
@@ -24,6 +25,7 @@ import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authent
 import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCozinhaRouteImport } from './routes/_authenticated/cozinha'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedCardapioRouteImport } from './routes/_authenticated/cardapio'
 import { Route as AuthenticatedCaixaRouteImport } from './routes/_authenticated/caixa'
 import { Route as AuthenticatedAlertasRouteImport } from './routes/_authenticated/alertas'
@@ -48,6 +50,12 @@ const MUserIdRoute = MUserIdRouteImport.update({
   path: '/m/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedVendaAvulsaRoute =
+  AuthenticatedVendaAvulsaRouteImport.update({
+    id: '/venda-avulsa',
+    path: '/venda-avulsa',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVendaRoute = AuthenticatedVendaRouteImport.update({
   id: '/venda',
   path: '/venda',
@@ -105,6 +113,11 @@ const AuthenticatedCozinhaRoute = AuthenticatedCozinhaRouteImport.update({
   path: '/cozinha',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCardapioRoute = AuthenticatedCardapioRouteImport.update({
   id: '/cardapio',
   path: '/cardapio',
@@ -133,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/caixa': typeof AuthenticatedCaixaRoute
   '/cardapio': typeof AuthenticatedCardapioRoute
+  '/clientes': typeof AuthenticatedClientesRoute
   '/cozinha': typeof AuthenticatedCozinhaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
@@ -144,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/venda': typeof AuthenticatedVendaRoute
+  '/venda-avulsa': typeof AuthenticatedVendaAvulsaRoute
   '/m/$userId': typeof MUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -153,6 +168,7 @@ export interface FileRoutesByTo {
   '/alertas': typeof AuthenticatedAlertasRoute
   '/caixa': typeof AuthenticatedCaixaRoute
   '/cardapio': typeof AuthenticatedCardapioRoute
+  '/clientes': typeof AuthenticatedClientesRoute
   '/cozinha': typeof AuthenticatedCozinhaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
@@ -164,6 +180,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/venda': typeof AuthenticatedVendaRoute
+  '/venda-avulsa': typeof AuthenticatedVendaAvulsaRoute
   '/m/$userId': typeof MUserIdRoute
 }
 export interface FileRoutesById {
@@ -175,6 +192,7 @@ export interface FileRoutesById {
   '/_authenticated/alertas': typeof AuthenticatedAlertasRoute
   '/_authenticated/caixa': typeof AuthenticatedCaixaRoute
   '/_authenticated/cardapio': typeof AuthenticatedCardapioRoute
+  '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/cozinha': typeof AuthenticatedCozinhaRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRoute
@@ -186,6 +204,7 @@ export interface FileRoutesById {
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/venda': typeof AuthenticatedVendaRoute
+  '/_authenticated/venda-avulsa': typeof AuthenticatedVendaAvulsaRoute
   '/m/$userId': typeof MUserIdRoute
 }
 export interface FileRouteTypes {
@@ -197,6 +216,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/caixa'
     | '/cardapio'
+    | '/clientes'
     | '/cozinha'
     | '/dashboard'
     | '/estoque'
@@ -208,6 +228,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/relatorios'
     | '/venda'
+    | '/venda-avulsa'
     | '/m/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -217,6 +238,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/caixa'
     | '/cardapio'
+    | '/clientes'
     | '/cozinha'
     | '/dashboard'
     | '/estoque'
@@ -228,6 +250,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/relatorios'
     | '/venda'
+    | '/venda-avulsa'
     | '/m/$userId'
   id:
     | '__root__'
@@ -238,6 +261,7 @@ export interface FileRouteTypes {
     | '/_authenticated/alertas'
     | '/_authenticated/caixa'
     | '/_authenticated/cardapio'
+    | '/_authenticated/clientes'
     | '/_authenticated/cozinha'
     | '/_authenticated/dashboard'
     | '/_authenticated/estoque'
@@ -249,6 +273,7 @@ export interface FileRouteTypes {
     | '/_authenticated/perfil'
     | '/_authenticated/relatorios'
     | '/_authenticated/venda'
+    | '/_authenticated/venda-avulsa'
     | '/m/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -288,6 +313,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/m/$userId'
       preLoaderRoute: typeof MUserIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/venda-avulsa': {
+      id: '/_authenticated/venda-avulsa'
+      path: '/venda-avulsa'
+      fullPath: '/venda-avulsa'
+      preLoaderRoute: typeof AuthenticatedVendaAvulsaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/venda': {
       id: '/_authenticated/venda'
@@ -366,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCozinhaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clientes': {
+      id: '/_authenticated/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AuthenticatedClientesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cardapio': {
       id: '/_authenticated/cardapio'
       path: '/cardapio'
@@ -402,6 +441,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAlertasRoute: typeof AuthenticatedAlertasRoute
   AuthenticatedCaixaRoute: typeof AuthenticatedCaixaRoute
   AuthenticatedCardapioRoute: typeof AuthenticatedCardapioRoute
+  AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
   AuthenticatedCozinhaRoute: typeof AuthenticatedCozinhaRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRoute
@@ -413,6 +453,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedVendaRoute: typeof AuthenticatedVendaRoute
+  AuthenticatedVendaAvulsaRoute: typeof AuthenticatedVendaAvulsaRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -420,6 +461,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAlertasRoute: AuthenticatedAlertasRoute,
   AuthenticatedCaixaRoute: AuthenticatedCaixaRoute,
   AuthenticatedCardapioRoute: AuthenticatedCardapioRoute,
+  AuthenticatedClientesRoute: AuthenticatedClientesRoute,
   AuthenticatedCozinhaRoute: AuthenticatedCozinhaRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRoute,
@@ -431,6 +473,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedVendaRoute: AuthenticatedVendaRoute,
+  AuthenticatedVendaAvulsaRoute: AuthenticatedVendaAvulsaRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
