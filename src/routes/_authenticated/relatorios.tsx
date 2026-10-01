@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios — NaOrlaApp" }] }),
@@ -15,12 +16,21 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 function Relatorios() {
   const [selectedClosure, setSelectedClosure] = useState<any>(null);
   const [selectedDay, setSelectedDay] = useState<any>(null);
+  // O dono decide se as vendas fiadas entram nos totais do relatório
+  const [includeFiado, setIncludeFiado] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("naorla.report_include_fiado") !== "0";
+  });
+  const toggleFiado = (v: boolean) => {
+    setIncludeFiado(v);
+    try { localStorage.setItem("naorla.report_include_fiado", v ? "1" : "0"); } catch { /* ignore */ }
+  };
   const since = new Date(); since.setDate(since.getDate() - 30);
   const { data } = useQuery({
     queryKey: ["report-30d"],
     queryFn: async () => {
       const { data: txs, error } = await supabase
-        .from("transactions").select("type, amount, created_at, category, payment_method")
+        .from("transactions").select("type, amount, created_at, category, payment_method, is_fiado, fiado_paid_at")
         .gte("created_at", since.toISOString());
       if (error) throw error;
       return txs ?? [];
@@ -106,10 +116,14 @@ function Relatorios() {
     enabled: !!selectedDay,
   });
 
-  const list = data ?? [];
+  const all = data ?? [];
+  // Quando desligado, vendas fiadas ficam fora das entradas/lucro
+  const list = all.filter(t => includeFiado || !t.is_fiado);
   const income = list.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
   const expense = list.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
   const profit = income - expense;
+  const fiadoTotal = all.filter(t => t.is_fiado).reduce((s, t) => s + Number(t.amount), 0);
+  const fiadoPending = all.filter(t => t.is_fiado && !t.fiado_paid_at).reduce((s, t) => s + Number(t.amount), 0);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
@@ -129,6 +143,25 @@ function Relatorios() {
         <p className="text-[11px] uppercase tracking-[0.3em] text-primary">Últimos 30 dias</p>
         <h1 className="font-display text-3xl">Relatórios</h1>
       </header>
+
+      {/* Controle do dono: incluir ou não vendas fiadas nos totais */}
+      <div className="flex items-center justify-between gap-3 border border-border rounded-lg p-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">Incluir vendas fiadas no relatório</p>
+          <p className="text-xs text-muted-foreground">
+            Desligado, o fiado fica fora das entradas e do lucro.
+          </p>
+        </div>
+        <Switch checked={includeFiado} onCheckedChange={toggleFiado} />
+      </div>
+      {fiadoTotal > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Vendas fiadas nos últimos 30 dias: <strong>{brl(fiadoTotal)}</strong>{" "}
+          (<strong className={fiadoPending > 0 ? "text-destructive" : "text-emerald-600"}>{brl(fiadoPending)} pendentes</strong>){" "}
+          {includeFiado ? "— incluídas nos totais" : "— fora dos totais"} ·{" "}
+          <Link to="/clientes" className="underline font-semibold">gerenciar fiados</Link>
+        </p>
+      )}
 
       <div className="grid grid-cols-3 gap-3 text-sm">
         <div className="border border-border p-3">

@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Trash2, Minus, Plus, ShoppingCart, Users, UserPlus, BadgeDollarSign } from "lucide-react";
@@ -27,6 +28,7 @@ type Customer = { id: string; name: string; phone: string | null; cpf: string | 
 
 export const Route = createFileRoute("/_authenticated/venda-avulsa")({
   head: () => ({ meta: [{ title: "Venda Avulsa — NaOrlaApp" }] }),
+  validateSearch: z.object({ cliente: z.string().optional() }),
   component: VendaAvulsa,
 });
 
@@ -34,11 +36,12 @@ function VendaAvulsa() {
   const employee = useEmployeeSession();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { cliente } = Route.useSearch();
   const [q, setQ] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [method, setMethod] = useState<string>("dinheiro");
-  const [customerId, setCustomerId] = useState<string>("none");
+  const [customerId, setCustomerId] = useState<string>(cliente ?? "none");
   const [notes, setNotes] = useState("");
   const [customerDialog, setCustomerDialog] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", cpf: "", notes: "" });
@@ -179,7 +182,7 @@ function VendaAvulsa() {
     },
     onSuccess: () => {
       const fiado = method === "fiado";
-      toast.success(fiado ? "Venda fiada registrada!" : "Venda registrada! " + brl(total));
+      toast.success(fiado ? "Venda fiada registrada! Fica PENDENTE até marcar como paga em Clientes." : "Venda registrada! " + brl(total));
       setCart([]);
       setNotes("");
       setCustomerId("none");
