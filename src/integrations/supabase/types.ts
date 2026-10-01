@@ -831,6 +831,15 @@ export type Database = {
         Returns: string
       }
       _verify_employee_token: { Args: { _token: string }; Returns: string }
+      close_order_fiado: {
+        Args: {
+          _order_id: string
+          _customer_id: string
+          _service_charge?: number
+          _notes?: string
+        }
+        Returns: string
+      }
       create_walkin_sale: {
         Args: {
           _items: Json

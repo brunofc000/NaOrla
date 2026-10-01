@@ -50,7 +50,7 @@ function Caixa() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, closed_at, closed_by, order_items(id, name, quantity, price, notes)")
+        .select("id, table_number, customer_name, status, total, notes, created_at, closed_at, closed_by, payment_method, order_items(id, name, quantity, price, notes)")
         .eq("status", "entregue")
         .gte("created_at", start.toISOString())
         .order("created_at", { ascending: false });
@@ -60,12 +60,24 @@ function Caixa() {
   });
 
   const [closing, setClosing] = useState<any>(null);
-  const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro">("pix");
+  const [method, setMethod] = useState<"dinheiro" | "pix" | "cartao" | "outro" | "fiado">("pix");
   const [cardType, setCardType] = useState<"debito" | "credito">("debito");
   const [includeServiceCharge, setIncludeServiceCharge] = useState(true);
+  const [closingCustomerId, setClosingCustomerId] = useState<string>("none");
+  const [closingNotes, setClosingNotes] = useState("");
   const [sangriaOpen, setSangriaOpen] = useState(false);
   const [sangriaAmount, setSangriaAmount] = useState("");
   const [sangriaDescription, setSangriaDescription] = useState("");
+
+  // Clientes fiéis (para fechar mesa no fiado)
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("customers").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const sangria = useMutation({
     mutationFn: async () => {
@@ -95,6 +107,17 @@ function Caixa() {
 
   const closeOrder = useMutation({
     mutationFn: async ({ orderId, paymentMethod, serviceCharge }: { orderId: string; paymentMethod: string; serviceCharge: number }) => {
+      if (paymentMethod === "fiado") {
+        if (closingCustomerId === "none") throw new Error("Selecione o cliente fiel para fechar no fiado");
+        const { error } = await (supabase as any).rpc("close_order_fiado", {
+          _order_id: orderId,
+          _customer_id: closingCustomerId,
+          _service_charge: serviceCharge,
+          _notes: closingNotes.trim() || null,
+        });
+        if (error) throw error;
+        return;
+      }
       const { error } = await (supabase as any).rpc("close_order", {
         _order_id: orderId,
         _payment_method: paymentMethod,
@@ -102,13 +125,20 @@ function Caixa() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["open_orders"] });
       qc.invalidateQueries({ queryKey: ["closed_orders_today"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Mesa fechada!");
+      qc.invalidateQueries({ queryKey: ["customer_fiados"] });
+      if (vars.paymentMethod === "fiado") {
+        toast.success("Mesa fechada no fiado! Fica PENDENTE em Clientes fiéis até marcar como paga.");
+      } else {
+        toast.success("Mesa fechada!");
+      }
       setClosing(null);
       setIncludeServiceCharge(true);
+      setClosingCustomerId("none");
+      setClosingNotes("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -267,7 +297,7 @@ function Caixa() {
                 <Button
                   size="sm"
                   className="w-full uppercase tracking-wider text-xs"
-                  onClick={() => { setClosing(o); setMethod("pix"); }}
+                  onClick={() => { setClosing(o); setMethod("pix"); setClosingCustomerId("none"); setClosingNotes(""); }}
                 >
                   <Receipt className="h-4 w-4 mr-2" /> Fechar mesa
                 </Button>
@@ -299,7 +329,13 @@ function Caixa() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600" />
+                  {o.payment_method === "fiado" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 border border-destructive/40 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                      Fiado
+                    </span>
+                  ) : (
+                    <Check className="h-4 w-4 text-emerald-600" />
+                  )}
                   <span className="font-bold text-primary">{brl(Number(o.total))}</span>
                 </div>
               </li>
@@ -367,7 +403,7 @@ function Caixa() {
             <div className="mt-4">
               <p className="mb-2 text-sm font-semibold">Forma de pagamento</p>
               <div className="grid grid-cols-2 gap-2">
-                {(["dinheiro", "pix", "cartao", "outro"] as const).map(m => (
+                {(["dinheiro", "pix", "cartao", "outro", "fiado"] as const).map(m => (
                   <button
                     key={m}
                     type="button"
@@ -376,7 +412,7 @@ function Caixa() {
                       method === m ? "border-secondary bg-secondary/20" : "border-border bg-background"
                     }`}
                   >
-                    {m === "cartao" ? "Cartão" : m}
+                    {m === "cartao" ? "Cartão" : m === "fiado" ? "Fiado (fiel)" : m}
                   </button>
                 ))}
               </div>
@@ -402,6 +438,30 @@ function Caixa() {
                   </button>
                 </div>
               )}
+              {method === "fiado" && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    A conta ficará <strong className="text-destructive">PENDENTE</strong> em Clientes fiéis até você marcar como paga.
+                  </p>
+                  <Select value={closingCustomerId} onValueChange={setClosingCustomerId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o cliente fiel" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Selecione o cliente fiel</SelectItem>
+                      {customers.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={closingNotes}
+                    onChange={e => setClosingNotes(e.target.value)}
+                    placeholder="Observação (opcional)"
+                  />
+                  {closingCustomerId === "none" && (
+                    <p className="text-xs text-destructive">Selecione o cliente para fechar no fiado.</p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="mt-5 flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setClosing(null)} disabled={closeOrder.isPending}>
@@ -414,9 +474,11 @@ function Caixa() {
                   paymentMethod: method === "cartao" ? `cartao_${cardType}` : method,
                   serviceCharge: includeServiceCharge ? Math.round(Number(closing.total) * 0.1 * 100) / 100 : 0,
                 })} 
-                disabled={closeOrder.isPending}
+                disabled={closeOrder.isPending || (method === "fiado" && closingCustomerId === "none")}
               >
-                {closeOrder.isPending ? "Fechando…" : `Pagar ${brl(includeServiceCharge ? Number(closing.total) * 1.1 : Number(closing.total))}`}
+                {closeOrder.isPending ? "Fechando…" : method === "fiado"
+                  ? `Fechar no fiado ${brl(includeServiceCharge ? Number(closing.total) * 1.1 : Number(closing.total))}`
+                  : `Pagar ${brl(includeServiceCharge ? Number(closing.total) * 1.1 : Number(closing.total))}`}
               </Button>
             </div>
           </div>
