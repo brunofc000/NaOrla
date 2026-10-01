@@ -19,7 +19,7 @@ import {
   AlertDialogCancel as AlertDialogCancelUI,
 } from "@/components/ui/alert-dialog";
 
-type OrderItem = { id: string; name: string; quantity: number; price: number; notes?: string | null; delivered?: boolean; created_at?: string; menu_item_id?: string | null; menu_items?: { image_url: string | null } | null };
+type OrderItem = { id: string; name: string; quantity: number; price: number; notes?: string | null; delivered?: boolean; created_at?: string; menu_item_id?: string | null; placed_by?: string | null; menu_items?: { image_url: string | null } | null };
 type Order = {
   id: string;
   table_number: string;
@@ -28,6 +28,7 @@ type Order = {
   total: number;
   notes: string | null;
   created_at: string;
+  placed_by?: string | null;
   closed_at?: string | null;
   closed_by?: string | null;
   order_items: OrderItem[];
@@ -67,7 +68,7 @@ function PedidosOwner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, closed_at, closed_by, order_items(id, name, quantity, price, notes, delivered, created_at, menu_item_id, menu_items(image_url))")
+        .select("id, table_number, customer_name, status, total, notes, created_at, placed_by, closed_at, closed_by, order_items(id, name, quantity, price, notes, delivered, created_at, menu_item_id, placed_by, menu_items(image_url))")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -222,6 +223,11 @@ function PedidosOwner() {
                         {o.status === "entregue" && o.closed_by && (
                           <p className="text-xs text-emerald-600 font-medium">
                             Fechado por {o.closed_by} {o.closed_at ? `às ${new Date(o.closed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                          </p>
+                        )}
+                        {o.placed_by && (
+                          <p className="text-xs font-semibold text-primary">
+                            ✏️ {o.placed_by === "Dono" ? "Anotado pelo Dono" : `Anotado por ${o.placed_by}`}
                           </p>
                         )}
                       </div>
@@ -427,6 +433,11 @@ function PedidosWaiter() {
                 <p className="text-xs text-muted-foreground">
                   {new Date(o.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </p>
+                {o.placed_by && (
+                  <p className="text-xs font-semibold text-primary">
+                    ✏️ {o.placed_by === "Dono" ? "Anotado pelo Dono" : `Anotado por ${o.placed_by}`}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLOR[o.status] ?? "bg-muted"}`}>

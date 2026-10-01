@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, Clock, Users } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, PlusCircle, PenLine } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { brl, minutesSince, waitingLabel, waitingChipClass } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 
 type OrderItem = {
   id: string;
@@ -13,6 +14,7 @@ type OrderItem = {
   notes: string | null;
   delivered: boolean;
   created_at?: string | null;
+  placed_by?: string | null;
 };
 
 type Order = {
@@ -23,6 +25,7 @@ type Order = {
   total: number;
   notes: string | null;
   created_at: string;
+  placed_by: string | null;
   order_items: OrderItem[];
 };
 
@@ -61,6 +64,7 @@ export const Route = createFileRoute("/_authenticated/mesas")({
 function MesasPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const navigate = useNavigate();
 
   // Relógio para atualizar os "há X min" sem depender de refetch
   useEffect(() => {
@@ -73,7 +77,7 @@ function MesasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, table_number, customer_name, status, total, notes, created_at, order_items(id, name, quantity, price, notes, delivered, created_at)")
+        .select("id, table_number, customer_name, status, total, notes, created_at, placed_by, order_items(id, name, quantity, price, notes, delivered, created_at, placed_by)")
         .in("status", ["novo", "preparando", "pronto"])
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -127,6 +131,14 @@ function MesasPage() {
         <p className="text-sm text-muted-foreground">
           Mesas com pedidos em aberto agora. Toque numa mesa para ver os pedidos e a entrega.
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2 uppercase tracking-wider text-xs"
+          onClick={() => navigate({ to: "/pedido" })}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />Adicionar pedido
+        </Button>
       </header>
 
       {totalPending > 0 && (
@@ -187,16 +199,27 @@ function MesasPage() {
 }
 
 function TableDetail({ table, now, onBack }: { table: TableGroup; now: number; onBack: () => void }) {
+  const navigate = useNavigate();
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar
-      </button>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="uppercase tracking-wider text-xs"
+          onClick={() => navigate({ to: "/pedido", search: { mesa: table.table } })}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />Adicionar pedido
+        </Button>
+      </div>
 
       <header>
         <p className="text-[11px] uppercase tracking-[0.3em] text-primary">Pedidos da mesa</p>
@@ -234,6 +257,12 @@ function TableDetail({ table, now, onBack }: { table: TableGroup; now: number; o
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_COLOR[o.status] ?? "bg-muted text-foreground"}`}>
                   {STATUS_LABEL[o.status] ?? o.status}
                 </span>
+                {o.placed_by && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    <PenLine className="h-3 w-3" />
+                    {o.placed_by === "Dono" ? "Anotado pelo Dono" : `Anotado por ${o.placed_by}`}
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-muted-foreground">
                 {new Date(o.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -251,6 +280,12 @@ function TableDetail({ table, now, onBack }: { table: TableGroup; now: number; o
                       {it.name}
                     </p>
                     {it.notes && <p className="text-[11px] italic text-muted-foreground">obs: {it.notes}</p>}
+                    {it.placed_by && (
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <PenLine className="h-3 w-3" />
+                        anotado por {it.placed_by}
+                      </p>
+                    )}
                   </div>
                   {it.delivered ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">

@@ -71,20 +71,31 @@ function NovoPedido() {
     mutationFn: async () => {
       if (!table.trim()) throw new Error("Informe a mesa");
       if (cart.length === 0) throw new Error("Adicione itens ao pedido");
-      if (!employee) throw new Error("Sessão de funcionário necessária");
-      const { error } = await (supabase as any).rpc("employee_place_order_v2", {
-        _token: employee.token,
+      const items = cart.map(c => ({ menu_item_id: c.id, quantity: c.quantity, notes: c.notes?.trim() || undefined }));
+      if (employee) {
+        const { error } = await (supabase as any).rpc("employee_place_order_v2", {
+          _token: employee.token,
+          _table_number: table.trim(),
+          _customer_name: customer.trim(),
+          _items: items,
+          _notes: notes || null,
+        });
+        if (error) throw error;
+        return;
+      }
+      // Dono lançando pedido na comanda (fica registrado como "Dono")
+      const { error } = await (supabase as any).rpc("owner_place_order", {
         _table_number: table.trim(),
         _customer_name: customer.trim(),
-        _items: cart.map(c => ({ menu_item_id: c.id, quantity: c.quantity, notes: c.notes?.trim() || undefined })),
+        _items: items,
         _notes: notes || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Pedido enviado para a cozinha!");
+      toast.success(`Pedido enviado para a cozinha! (anotado por ${employee?.employee_name || "Dono"})`);
       setCart([]); setTable(""); setCustomer(""); setNotes("");
-      navigate({ to: "/cozinha" });
+      navigate({ to: employee ? "/cozinha" : "/mesas" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -92,8 +103,11 @@ function NovoPedido() {
   return (
     <div className="space-y-5 pb-32">
       <header>
-        <p className="text-[11px] uppercase tracking-[0.3em] text-primary">Garçom</p>
+        <p className="text-[11px] uppercase tracking-[0.3em] text-primary">{employee ? "Garçom" : "Dono"}</p>
         <h1 className="font-display text-3xl">Novo pedido</h1>
+        <p className="text-sm text-muted-foreground">
+          Anotado por: <strong>{employee?.employee_name || "Dono"}</strong>
+        </p>
       </header>
 
       <div className="grid grid-cols-2 gap-3">

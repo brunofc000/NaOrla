@@ -276,6 +276,7 @@ export type Database = {
           name: string
           notes: string | null
           order_id: string
+          placed_by: string | null
           price: number
           quantity: number
         }
@@ -287,6 +288,7 @@ export type Database = {
           name: string
           notes?: string | null
           order_id: string
+          placed_by?: string | null
           price: number
           quantity: number
         }
@@ -298,6 +300,7 @@ export type Database = {
           name?: string
           notes?: string | null
           order_id?: string
+          placed_by?: string | null
           price?: number
           quantity?: number
         }
@@ -328,6 +331,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string | null
+          placed_by: string | null
           status: string
           table_number: string
           total: number
@@ -343,6 +347,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          placed_by?: string | null
           status?: string
           table_number: string
           total?: number
@@ -358,6 +363,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          placed_by?: string | null
           status?: string
           table_number?: string
           total?: number
@@ -831,6 +837,15 @@ export type Database = {
         Returns: string
       }
       _verify_employee_token: { Args: { _token: string }; Returns: string }
+      owner_place_order: {
+        Args: {
+          _table_number: string
+          _customer_name: string
+          _items: Json
+          _notes?: string
+        }
+        Returns: string
+      }
       close_order_fiado: {
         Args: {
           _order_id: string

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChefHat } from "lucide-react";
+import { ArrowLeft, ChefHat, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ type Status = "novo" | "preparando" | "pronto" | "entregue" | "cancelado";
 type Order = {
   id: string; table_number: string; customer_name: string; customer_phone: string;
   status: Status; total: number; notes: string | null; created_at: string;
+  placed_by?: string | null;
   order_items: { id: string; name: string; quantity: number; price: number; notes: string | null }[];
 };
 
@@ -42,7 +43,7 @@ function Cozinha() {
       }
       const { data, error } = await supabase
         .from("orders")
-        .select("id,table_number,customer_name,customer_phone,status,total,notes,created_at,order_items(id,name,quantity,price,notes)")
+        .select("id,table_number,customer_name,customer_phone,status,total,notes,created_at,placed_by,order_items(id,name,quantity,price,notes)")
         .in("status", ["novo", "preparando", "pronto"])
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -100,6 +101,12 @@ function Cozinha() {
                   <p className="text-[11px] text-muted-foreground">{new Date(o.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
                 </div>
                 <p className="text-xs text-muted-foreground">{o.customer_name} · {o.customer_phone}</p>
+                {o.placed_by && (
+                  <p className="text-[11px] font-semibold text-primary flex items-center gap-1">
+                    <PenLine className="h-3 w-3" />
+                    {o.placed_by === "Dono" ? "Anotado pelo Dono" : `Anotado por ${o.placed_by}`}
+                  </p>
+                )}
                 <ul className="text-sm divide-y divide-border/60">
                   {o.order_items.map(it => (
                     <li key={it.id} className="py-1.5">
